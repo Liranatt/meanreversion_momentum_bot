@@ -1,0 +1,5 @@
+2025-09-06 01:16:35,121 - INFO - Downloading data for 88 tickers and benchmarks...
+2025-09-06 01:16:40,575 - INFO - Data download complete.
+2025-09-06 01:16:40,576 - INFO - Allocating 50% of capital ($50,000.00) to passive QQQ holding.
+2025-09-06 01:16:40,576 - INFO - Remaining 50% ($50,000.00) allocated to active strategy.
+2025-09-06 01:16:40,576 - INFO - --- Starting Simulation (2020-09-06 to 2025-09-06) ---

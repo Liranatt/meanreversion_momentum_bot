@@ -1,0 +1,138 @@
+(.venv) PS C:\Users\Liran\PycharmProjects\meanreversionbots> python main.py
+trying to connect to IB
+connection successful
+ERROR -1 2104 Market data farm connection is OK:hfarm
+ERROR -1 2104 Market data farm connection is OK:usfarm.nj
+ERROR -1 2104 Market data farm connection is OK:jfarm
+ERROR -1 2104 Market data farm connection is OK:usfuture
+ERROR -1 2104 Market data farm connection is OK:cashfarm
+ERROR -1 2104 Market data farm connection is OK:eufarmnj
+ERROR -1 2104 Market data farm connection is OK:usfarm
+ERROR -1 2106 HMDS data farm connection is OK:euhmds
+ERROR -1 2106 HMDS data farm connection is OK:fundfarm
+ERROR -1 2106 HMDS data farm connection is OK:ushmds
+ERROR -1 2158 Sec-def data farm connection is OK:secdefil
+C:\Users\Liran\PycharmProjects\meanreversionbots\strategy_mean_momentum.py:29: FutureWarning: YF.download() has changed argument auto_adjust default to True
+  all_data = yf.download(tickers_to_download, start=start_date, end=end_date)
+[*********************100%***********************]  31 of 31 completed
+Setup complete.
+Requesting account summary...
+Subscribing to PnL updates for account DUN505877...
+Requesting market data for MSFT (Req ID: 20)
+Requesting market data for AAPL (Req ID: 21)
+Requesting market data for NVDA (Req ID: 22)
+Requesting market data for AMZN (Req ID: 23)
+Requesting market data for GOOGL (Req ID: 24)
+Requesting market data for GOOG (Req ID: 25)
+Requesting market data for META (Req ID: 26)
+Requesting market data for AVGO (Req ID: 27)
+Requesting market data for TSLA (Req ID: 28)
+Requesting market data for COST (Req ID: 29)
+Requesting market data for AMD (Req ID: 30)
+Requesting market data for PEP (Req ID: 31)
+Requesting market data for ADBE (Req ID: 32)
+Requesting market data for NFLX (Req ID: 33)
+Requesting market data for QCOM (Req ID: 34)
+Requesting market data for LIN (Req ID: 35)
+Requesting market data for INTC (Req ID: 36)
+Requesting market data for AMAT (Req ID: 37)
+Requesting market data for CMCSA (Req ID: 38)
+Requesting market data for INTU (Req ID: 39)
+Requesting market data for TXN (Req ID: 40)
+Requesting market data for AMGN (Req ID: 41)
+Requesting market data for CSCO (Req ID: 42)
+Requesting market data for LRCX (Req ID: 43)
+Requesting market data for HON (Req ID: 44)
+Requesting market data for BKNG (Req ID: 45)
+Requesting market data for ADP (Req ID: 46)
+Requesting market data for SBUX (Req ID: 47)
+Requesting market data for ISRG (Req ID: 48)
+Requesting market data for VRTX (Req ID: 49)
+
+--- Waiting for market data to arrive... ---
+Waiting... Received data for 0 of 30 tickers.
+Account summary request finished.
+ERROR -1 2108 Market data farm connection is inactive but should be available upon demand.hfarm
+ERROR -1 2108 Market data farm connection is inactive but should be available upon demand.hfarm
+ERROR -1 2108 Market data farm connection is inactive but should be available upon demand.jfarm
+ERROR -1 2108 Market data farm connection is inactive but should be available upon demand.jfarm
+ERROR -1 2108 Market data farm connection is inactive but should be available upon demand.eufarmnj
+ERROR -1 2108 Market data farm connection is inactive but should be available upon demand.eufarmnj
+ERROR 24 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 25 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 27 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 32 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 31 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 33 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 34 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 29 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 30 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 35 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 38 10167 Requested market data is not subscribed. Displaying delayed market data.
+Waiting... Received data for 6 of 30 tickers.
+ERROR 36 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 37 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 39 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 40 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 41 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 43 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 42 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 44 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 45 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 47 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 46 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 48 10167 Requested market data is not subscribed. Displaying delayed market data.
+ERROR 49 10167 Requested market data is not subscribed. Displaying delayed market data.
+ Data received for 30 tickers. Starting strategy.
+
+==================================================
+Initial state populated.
+Current Cash: 996682.32
+Current Positions: {}
+==================================================
+
+Scanning for trading signals...
+wont buy MSFT bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 54.21292727126388
+wont buy AAPL bullmarket is True macd is Medium, boilinger is SMA and atr is low and last rsi is 62.2015488553887
+wont buy NVDA bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 50.03039192857042
+wont buy AMZN bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 57.00378024943122
+wont buy GOOGL bullmarket is True macd is Medium, boilinger is SMA and atr is low and last rsi is 88.5766665095231
+wont buy GOOG bullmarket is True macd is Medium, boilinger is up above and atr is low and last rsi is 88.73021672140759
+wont buy META bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 59.25717256910509
+wont buy AVGO bullmarket is True macd is Medium, boilinger is SMA and atr is low and last rsi is 69.2786690671997
+wont buy TSLA bullmarket is True macd is Medium, boilinger is up above and atr is low and last rsi is 79.5190310628802
+wont buy COST bullmarket is True macd is Medium, boilinger is SMA and atr is low and last rsi is 46.61296716500778
+wont buy AMD bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 48.164857096743305
+wont buy PEP bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 41.562337206307504
+wont buy ADBE bullmarket is True macd is Medium, boilinger is SMA and atr is low and last rsi is 48.584949789630734
+wont buy NFLX bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 45.21589522836017
+wont buy QCOM bullmarket is True macd is Medium, boilinger is SMA and atr is low and last rsi is 64.43852868072204 
+wont buy LIN bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 47.150409443577715
+wont buy INTC bullmarket is True macd is Medium, boilinger is SMA and atr is low and last rsi is 60.76261547796901
+wont buy AMAT bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 56.56924430116348
+wont buy CMCSA bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 35.231734357553556
+wont buy INTU bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 29.979358731209537
+wont buy TXN bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 26.57220911267817
+wont buy AMGN bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 33.82227296494984
+wont buy CSCO bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 45.42269182449505
+wont buy LRCX bullmarket is True macd is Medium, boilinger is up above and atr is low and last rsi is 76.33217541572732
+wont buy HON bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 38.80848675016509
+wont buy BKNG bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 44.97857109113895
+wont buy ADP bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 35.36243803447345
+wont buy SBUX bullmarket is True macd is weak, boilinger is SMA and atr is low and last rsi is 40.6991476848851
+wont buy ISRG bullmarket is True macd is weak, boilinger is low below and atr is low and last rsi is 33.0206351286486
+wont buy VRTX bullmarket is True macd is Medium, boilinger is SMA and atr is low and last rsi is 41.85767293035326
+
+--- Waiting 10 seconds for any order fills to be processed... ---
+
+--- Processing final events ---
+
+==================================================
+Final Run State:
+Final Cash: 996682.32
+Final Positions: {}
+Final PnL -> Daily: 28.305077705383574, Unrealized: 59.46417780538326
+==================================================
+
+Run complete. Disconnecting.
+(.venv) PS C:\Users\Liran\PycharmProjects\meanreversionbots> 

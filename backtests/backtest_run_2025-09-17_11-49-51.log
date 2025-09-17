@@ -1,0 +1,32 @@
+2025-09-17 11:49:51,238 - INFO - Downloading all historical data for 32 symbols...
+2025-09-17 11:49:57,258 - INFO - Full data download complete.
+2025-09-17 11:49:57,259 - INFO - --- Starting Simulation (2020-09-17 to 2025-09-16) ---
+2025-09-17 11:49:58,577 - INFO - 2020-10-28 - BUY:   49 of LIN   at $202.43
+2025-09-17 11:49:58,579 - INFO - 2020-10-28 - BUY:  226 of INTC  at $39.71
+2025-09-17 11:49:58,583 - INFO - 2020-10-28 - BUY:   43 of AMGN  at $184.92
+2025-09-17 11:49:58,585 - INFO - 2020-10-28 - BUY:  235 of CSCO  at $31.00
+2025-09-17 11:49:58,783 - INFO - 2020-11-03 - SELL (Strategy Signal):   49 of LIN   at $218.46 | P&L: $783.11
+2025-09-17 11:49:58,973 - INFO - 2020-11-09 - SELL (Strategy Signal):   43 of AMGN  at $200.84 | P&L: $681.76
+2025-09-17 11:49:59,022 - INFO - 2020-11-10 - SELL (Strategy Signal):  235 of CSCO  at $33.61 | P&L: $611.53
+2025-09-17 11:49:59,263 - INFO - 2020-11-17 - SELL (Strategy Signal):  226 of INTC  at $41.16 | P&L: $324.30
+2025-09-17 11:50:01,090 - INFO - 2021-01-14 - BUY:   41 of META  at $244.30
+2025-09-17 11:50:01,275 - INFO - 2021-01-21 - SELL (Strategy Signal):   41 of META  at $271.38 | P&L: $1107.84
+2025-09-17 11:50:01,463 - INFO - 2021-01-27 - BUY:    5 of BKNG  at $1859.28
+2025-09-17 11:50:01,924 - INFO - 2021-02-10 - SELL (Strategy Signal):    5 of BKNG  at $2111.31 | P&L: $1257.68
+2025-09-17 11:50:02,342 - INFO - 2021-02-25 - BUY:   88 of AAPL  at $118.07
+2025-09-17 11:50:02,351 - INFO - 2021-02-25 - BUY:   29 of COST  at $317.00
+2025-09-17 11:50:02,353 - INFO - 2021-02-25 - BUY:   75 of PEP   at $112.51
+2025-09-17 11:50:02,623 - INFO - 2021-03-05 - BUY:   38 of TSLA  at $199.32
+2025-09-17 11:50:02,673 - INFO - 2021-03-08 - SELL (Trailing Stop):   88 of AAPL  at $113.55 | P&L: $-400.10
+2025-09-17 11:50:02,681 - INFO - 2021-03-08 - BUY:  106 of AMD   at $73.96
+2025-09-17 11:50:02,683 - INFO - 2021-03-08 - BUY:   16 of ADBE  at $421.20
+2025-09-17 11:50:02,685 - INFO - 2021-03-08 - BUY:   57 of QCOM  at $111.72
+2025-09-17 11:50:02,961 - INFO - 2021-03-16 - SELL (Strategy Signal):   75 of PEP   at $116.91 | P&L: $327.25
+2025-09-17 11:50:03,013 - INFO - 2021-03-17 - SELL (Strategy Signal):   29 of COST  at $312.53 | P&L: $-132.17
+2025-09-17 11:50:03,059 - INFO - 2021-03-18 - SELL (Trailing Stop):   38 of TSLA  at $217.72 | P&L: $696.83
+2025-09-17 11:50:03,246 - INFO - 2021-03-24 - SELL (Trailing Stop):  106 of AMD   at $76.48 | P&L: $264.62
+2025-09-17 11:50:03,340 - INFO - 2021-03-26 - SELL (Strategy Signal):   16 of ADBE  at $469.09 | P&L: $763.74
+2025-09-17 11:50:03,393 - INFO - 2021-03-29 - SELL (Strategy Signal):   57 of QCOM  at $119.03 | P&L: $414.61
+2025-09-17 11:50:05,746 - INFO - 2021-06-11 - BUY:   55 of VRTX  at $193.02
+2025-09-17 11:50:05,978 - INFO - 2021-06-18 - BUY:   49 of HON   at $194.72
+2025-09-17 11:50:06,394 - INFO - 2021-07-01 - SELL (Strategy Signal):   55 of VRTX  at $202.21 | P&L: $502.95

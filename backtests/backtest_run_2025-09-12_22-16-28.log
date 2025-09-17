@@ -1,0 +1,61 @@
+2025-09-12 22:16:28,720 - INFO - Downloading data for 30 tickers and benchmarks...
+2025-09-12 22:16:31,437 - INFO - Data download complete.
+2025-09-12 22:16:31,438 - INFO - Allocating 50% of capital ($50,000.00) to passive QQQ holding.
+2025-09-12 22:16:31,439 - INFO - Remaining 50% ($50,000.00) allocated to active strategy.
+2025-09-12 22:16:31,439 - INFO - --- Starting Simulation (2021-06-29 to 2025-09-11) ---
+2025-09-12 22:16:33,709 - INFO - 2021-10-26 - ACTIVE BUY (momentum):   14 of TSLA  at $339.48
+2025-09-12 22:16:33,965 - INFO - 2021-11-05 - ACTIVE BUY (momentum):   30 of QCOM  at $149.28
+2025-09-12 22:16:34,024 - INFO - 2021-11-09 - ACTIVE SELL:   14 of TSLA  at $341.17 | P&L: $21.16
+2025-09-12 22:16:34,690 - INFO - 2021-12-10 - ACTIVE BUY (momentum):   78 of AVGO  at $58.35
+2025-09-12 22:16:35,422 - INFO - 2022-01-13 - ACTIVE SELL:   78 of AVGO  at $55.52 | P&L: $-223.49
+2025-09-12 22:16:35,553 - INFO - 2022-01-20 - ACTIVE SELL:   30 of QCOM  at $153.03 | P&L: $110.11
+2025-09-12 22:16:35,562 - INFO - 2022-01-20 - ACTIVE BUY (mean_reversion):   83 of LRCX  at $59.43
+2025-09-12 22:16:35,715 - INFO - 2022-01-27 - ACTIVE SELL:   83 of LRCX  at $53.25 | P&L: $-514.85
+2025-09-12 22:16:35,744 - INFO - 2022-01-28 - ACTIVE BUY (mean_reversion):   91 of LRCX  at $53.81
+2025-09-12 22:16:36,175 - INFO - 2022-02-17 - ACTIVE SELL:   91 of LRCX  at $55.68 | P&L: $167.41
+2025-09-12 22:16:36,446 - INFO - 2022-03-04 - ACTIVE BUY (mean_reversion):   98 of LRCX  at $50.42
+2025-09-12 22:16:36,651 - INFO - 2022-03-14 - ACTIVE SELL:   98 of LRCX  at $44.98 | P&L: $-536.12
+2025-09-12 22:16:37,870 - INFO - 2022-05-09 - ACTIVE BUY (mean_reversion):   20 of VRTX  at $235.02
+2025-09-12 22:16:38,266 - INFO - 2022-05-23 - ACTIVE SELL:   20 of VRTX  at $268.35 | P&L: $664.10
+2025-09-12 22:16:38,807 - INFO - 2022-06-16 - ACTIVE BUY (mean_reversion):  123 of LRCX  at $40.38
+2025-09-12 22:16:39,193 - INFO - 2022-07-01 - ACTIVE SELL:  123 of LRCX  at $38.11 | P&L: $-281.16
+2025-09-12 22:16:41,147 - INFO - 2022-10-10 - ACTIVE BUY (mean_reversion):  145 of LRCX  at $33.99
+2025-09-12 22:16:41,273 - INFO - 2022-10-14 - ACTIVE SELL:  145 of LRCX  at $30.52 | P&L: $-505.10
+2025-09-12 22:16:42,579 - INFO - 2022-12-19 - ACTIVE BUY (mean_reversion):   16 of VRTX  at $291.59
+2025-09-12 22:16:42,672 - INFO - 2022-12-22 - ACTIVE BUY (mean_reversion):  111 of LRCX  at $39.79
+2025-09-12 22:16:42,967 - INFO - 2023-01-06 - ACTIVE SELL:  111 of LRCX  at $43.31 | P&L: $387.90
+2025-09-12 22:16:43,005 - INFO - 2023-01-09 - ACTIVE SELL:   16 of VRTX  at $283.23 | P&L: $-136.26
+2025-09-12 22:16:45,769 - INFO - 2023-05-26 - ACTIVE BUY (momentum):   62 of AVGO  at $78.55
+2025-09-12 22:16:47,597 - INFO - 2023-08-17 - ACTIVE SELL:   62 of AVGO  at $80.36 | P&L: $110.01
+2025-09-12 22:16:57,554 - INFO - 2024-11-13 - ACTIVE BUY (momentum):   14 of TSLA  at $330.24
+2025-09-12 22:16:58,265 - INFO - 2024-12-13 - ACTIVE BUY (momentum):   20 of AVGO  at $223.00
+2025-09-12 22:16:58,372 - INFO - 2024-12-18 - ACTIVE SELL:   20 of AVGO  at $221.83 | P&L: $-25.91
+2025-09-12 22:16:58,442 - INFO - 2024-12-20 - ACTIVE SELL:   14 of TSLA  at $421.06 | P&L: $1268.98
+2025-09-12 22:16:59,578 - INFO - 2025-02-18 - ACTIVE BUY (momentum):  184 of INTC  at $27.39
+2025-09-12 22:16:59,717 - INFO - 2025-02-24 - ACTIVE SELL:  184 of INTC  at $24.27 | P&L: $-576.58
+2025-09-12 22:17:00,591 - INFO - 2025-04-03 - ACTIVE BUY (mean_reversion):   76 of LRCX  at $65.06
+2025-09-12 22:17:00,938 - INFO - 2025-04-17 - ACTIVE SELL:   76 of LRCX  at $63.60 | P&L: $-113.18
+2025-09-12 22:17:01,326 - INFO - 2025-05-06 - ACTIVE BUY (mean_reversion):   11 of VRTX  at $450.03
+2025-09-12 22:17:03,456 - INFO - 2025-08-05 - ACTIVE SELL:   11 of VRTX  at $374.98 | P&L: $-828.05
+2025-09-12 22:17:04,193 - INFO - 2025-09-10 - ACTIVE BUY (momentum):   13 of AVGO  at $369.57
+2025-09-12 22:17:04,252 - INFO - --- Simulation Complete ---
+2025-09-12 22:17:04,253 - INFO - 
+==================================================
+BACKTEST RESULTS
+==================================================
+2025-09-12 22:17:04,255 - INFO - 
+Liquidating all open positions on the final day: 2025-09-11...
+2025-09-12 22:17:04,256 - INFO - 2025-09-11 - ACTIVE SELL:   13 of AVGO  at $359.63 | P&L: $-131.72
+2025-09-12 22:17:04,261 - INFO - Starting Total Portfolio Value: $100,000.00
+2025-09-12 22:17:04,261 - INFO - Final Total Portfolio Value:   $133,177.12
+2025-09-12 22:17:04,261 - INFO - Total Return:                    33.18%
+2025-09-12 22:17:04,262 - INFO - 
+--- Risk & Return Metrics ---
+2025-09-12 22:17:04,262 - INFO - Sharpe Ratio:                    0.61  (NASDAQ 100: 0.62)
+2025-09-12 22:17:04,263 - INFO - Max Drawdown:                    -20.63% (NASDAQ 100: -35.56%)
+2025-09-12 22:17:04,265 - INFO - 
+Total Net P&L from active trades: $-1,142.76
+2025-09-12 22:17:04,265 - INFO - Total Active Trades Made: 18
+2025-09-12 22:17:04,265 - INFO - Win Rate: 38.89%
+2025-09-12 22:17:04,562 - INFO - 
+Equity and benchmark comparison plot saved to equity_and_benchmarks_curve.png
