@@ -199,3 +199,199 @@ async def market_latest(
         for r in reversed(rows)
     ]
     return JSONResponse(content={"ticker": ticker.upper(), "count": len(data), "data": data})
+
+
+# ── Current positions ─────────────────────────────────────
+
+@app.get("/api/v1/positions/current")
+async def current_positions():
+    """Return all held positions with current price, unrealized P&L, etc."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT symbol, quantity, avg_cost, current_price, market_value,
+               unrealized_pnl, realized_pnl, strategy_type, entry_date, last_updated
+        FROM algo_trading.positions
+        ORDER BY market_value DESC NULLS LAST;
+        """
+    )
+    data = [
+        {
+            "symbol": r["symbol"],
+            "quantity": r["quantity"],
+            "avg_cost": float(r["avg_cost"]) if r["avg_cost"] else 0,
+            "current_price": float(r["current_price"]) if r["current_price"] else 0,
+            "market_value": float(r["market_value"]) if r["market_value"] else 0,
+            "unrealized_pnl": float(r["unrealized_pnl"]) if r["unrealized_pnl"] else 0,
+            "realized_pnl": float(r["realized_pnl"]) if r["realized_pnl"] else 0,
+            "strategy": r["strategy_type"] or "",
+            "entry_date": r["entry_date"].isoformat() if r["entry_date"] else None,
+            "last_updated": r["last_updated"].isoformat() if r["last_updated"] else None,
+        }
+        for r in rows
+    ]
+    totals = {
+        "total_market_value": sum(d["market_value"] for d in data),
+        "total_unrealized_pnl": sum(d["unrealized_pnl"] for d in data),
+        "total_realized_pnl": sum(d["realized_pnl"] for d in data),
+        "num_positions": len(data),
+    }
+    return JSONResponse(content={"count": len(data), "totals": totals, "data": data})
+
+
+# ── Account overview ──────────────────────────────────────
+
+@app.get("/api/v1/account/current")
+async def account_current():
+    """Return the latest account snapshot."""
+    pool = await get_pool()
+    row = await pool.fetchrow(
+        """
+        SELECT recorded_at, net_liquidation, free_cash, total_positions_value,
+               total_unrealized_pnl, total_realized_pnl, num_positions
+        FROM algo_trading.account_snapshot
+        ORDER BY recorded_at DESC
+        LIMIT 1;
+        """
+    )
+    if row is None:
+        return JSONResponse(content={"data": None, "message": "No account data yet."})
+    return JSONResponse(content={"data": {
+        "date": row["recorded_at"].isoformat(),
+        "net_liquidation": float(row["net_liquidation"]) if row["net_liquidation"] else 0,
+        "free_cash": float(row["free_cash"]) if row["free_cash"] else 0,
+        "total_positions_value": float(row["total_positions_value"]) if row["total_positions_value"] else 0,
+        "total_unrealized_pnl": float(row["total_unrealized_pnl"]) if row["total_unrealized_pnl"] else 0,
+        "total_realized_pnl": float(row["total_realized_pnl"]) if row["total_realized_pnl"] else 0,
+        "num_positions": row["num_positions"] or 0,
+    }})
+
+
+@app.get("/api/v1/account/history")
+async def account_history(limit: int = Query(default=365, ge=1, le=3650)):
+    """Return equity curve from account snapshots."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT recorded_at, net_liquidation, free_cash,
+               total_positions_value, total_unrealized_pnl, total_realized_pnl
+        FROM algo_trading.account_snapshot
+        ORDER BY recorded_at DESC
+        LIMIT $1;
+        """,
+        limit,
+    )
+    data = [
+        {
+            "date": r["recorded_at"].isoformat(),
+            "net_liquidation": float(r["net_liquidation"]) if r["net_liquidation"] else 0,
+            "free_cash": float(r["free_cash"]) if r["free_cash"] else 0,
+            "positions_value": float(r["total_positions_value"]) if r["total_positions_value"] else 0,
+            "unrealized_pnl": float(r["total_unrealized_pnl"]) if r["total_unrealized_pnl"] else 0,
+            "realized_pnl": float(r["total_realized_pnl"]) if r["total_realized_pnl"] else 0,
+        }
+        for r in reversed(rows)
+    ]
+    return JSONResponse(content={"count": len(data), "data": data})
+
+
+# ── Pending signals ───────────────────────────────────────
+
+@app.get("/api/v1/signals/pending")
+async def pending_signals():
+    """Return all signals awaiting execution at next market open."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT id, generated_at, symbol, signal_type, quantity,
+               target_price, strategy_type, reason, status
+        FROM algo_trading.pending_signals
+        WHERE status = 'PENDING'
+        ORDER BY generated_at DESC;
+        """
+    )
+    data = [
+        {
+            "id": r["id"],
+            "generated_at": r["generated_at"].isoformat(),
+            "symbol": r["symbol"],
+            "signal_type": r["signal_type"],
+            "quantity": r["quantity"],
+            "target_price": float(r["target_price"]) if r["target_price"] else 0,
+            "strategy": r["strategy_type"] or "",
+            "reason": r["reason"] or "",
+        }
+        for r in rows
+    ]
+    return JSONResponse(content={"count": len(data), "data": data})
+
+
+@app.get("/api/v1/signals/history")
+async def signals_history(limit: int = Query(default=100, ge=1, le=1000)):
+    """Return recent signal history (all statuses)."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT id, generated_at, symbol, signal_type, quantity,
+               target_price, strategy_type, reason, status, executed_at, fill_price
+        FROM algo_trading.pending_signals
+        ORDER BY generated_at DESC
+        LIMIT $1;
+        """,
+        limit,
+    )
+    data = [
+        {
+            "id": r["id"],
+            "generated_at": r["generated_at"].isoformat(),
+            "symbol": r["symbol"],
+            "signal_type": r["signal_type"],
+            "quantity": r["quantity"],
+            "target_price": float(r["target_price"]) if r["target_price"] else 0,
+            "strategy": r["strategy_type"] or "",
+            "reason": r["reason"] or "",
+            "status": r["status"],
+            "executed_at": r["executed_at"].isoformat() if r["executed_at"] else None,
+            "fill_price": float(r["fill_price"]) if r["fill_price"] else None,
+        }
+        for r in rows
+    ]
+    return JSONResponse(content={"count": len(data), "data": data})
+
+
+# ── Reconciliation ────────────────────────────────────────
+
+@app.get("/api/v1/reconciliation/latest")
+async def reconciliation_latest():
+    """Return the most recent reconciliation results."""
+    pool = await get_pool()
+    # Get the timestamp of the latest reconciliation run
+    ts_row = await pool.fetchrow(
+        "SELECT MAX(checked_at) AS latest FROM algo_trading.reconciliation_log;"
+    )
+    if ts_row is None or ts_row["latest"] is None:
+        return JSONResponse(content={"data": [], "message": "No reconciliation data yet."})
+
+    rows = await pool.fetch(
+        """
+        SELECT checked_at, symbol, ib_quantity, db_quantity,
+               ib_avg_cost, db_avg_cost, status
+        FROM algo_trading.reconciliation_log
+        WHERE checked_at = $1
+        ORDER BY symbol;
+        """,
+        ts_row["latest"],
+    )
+    data = [
+        {
+            "checked_at": r["checked_at"].isoformat(),
+            "symbol": r["symbol"],
+            "ib_quantity": r["ib_quantity"],
+            "db_quantity": r["db_quantity"],
+            "ib_avg_cost": float(r["ib_avg_cost"]) if r["ib_avg_cost"] else 0,
+            "db_avg_cost": float(r["db_avg_cost"]) if r["db_avg_cost"] else 0,
+            "status": r["status"],
+        }
+        for r in rows
+    ]
+    return JSONResponse(content={"count": len(data), "checked_at": ts_row["latest"].isoformat(), "data": data})
