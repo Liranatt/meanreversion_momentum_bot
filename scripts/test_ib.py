@@ -3,10 +3,15 @@
 Connects to local IB Gateway/TWS, requests account summary and positions,
 prints results and exits. Does NOT place any orders.
 """
+import os
+import sys
 import time
 import logging
 from queue import Queue, Empty
 import argparse
+
+# Add project root to path so we can import config / ib_connection
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 from ib_connection import IBConnection

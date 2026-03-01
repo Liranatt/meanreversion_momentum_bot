@@ -7,7 +7,13 @@ Usage:
   python reset_portfolio.py --cash 100000
 """
 import argparse
+import os
+import sys
 import logging
+
+# Add project root to path so we can import db_manager
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import db_manager
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')

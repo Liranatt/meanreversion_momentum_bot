@@ -7,7 +7,8 @@ conn = psycopg2.connect(url, sslmode="require")
 conn.autocommit = True
 cur = conn.cursor()
 
-with open("schema_v2.sql", "r") as f:
+schema_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'sql', 'schema_v2.sql')
+with open(schema_path, "r") as f:
     cur.execute(f.read())
 
 print("Schema v2 applied successfully!")

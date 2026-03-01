@@ -2,10 +2,10 @@ name: Daily Trading Bot
 
 on:
   schedule:
-    # After-close sync: Mon–Fri 21:30 UTC (4:30 PM ET)
-    - cron: "30 21 * * 1-5"
-    # Market-open execution: Mon–Fri 14:35 UTC (9:35 AM ET, 5 min after open)
-    - cron: "35 14 * * 1-5"
+    # Daily sync: Mon–Fri 06:35 UTC = 9:35 AM Israel (summer UTC+3) / 8:35 AM (winter UTC+2)
+    - cron: "35 6 * * 1-5"
+    # Execute signals: Mon–Fri 13:30 UTC = 4:30 PM Israel (summer) / 3:30 PM (winter) ≈ US market open
+    - cron: "30 13 * * 1-5"
   workflow_dispatch:
     inputs:
       mode:
@@ -27,7 +27,7 @@ jobs:
   daily-sync:
     if: >
       github.event_name == 'workflow_dispatch' && (github.event.inputs.mode == 'sync' || github.event.inputs.mode == 'both')
-      || (github.event_name == 'schedule' && github.event.schedule == '30 21 * * 1-5')
+      || (github.event_name == 'schedule' && github.event.schedule == '35 6 * * 1-5')
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -95,7 +95,7 @@ jobs:
   execute-signals:
     if: >
       github.event_name == 'workflow_dispatch' && (github.event.inputs.mode == 'execute' || github.event.inputs.mode == 'both')
-      || (github.event_name == 'schedule' && github.event.schedule == '35 14 * * 1-5')
+      || (github.event_name == 'schedule' && github.event.schedule == '30 13 * * 1-5')
     runs-on: ubuntu-latest
     timeout-minutes: 15
 

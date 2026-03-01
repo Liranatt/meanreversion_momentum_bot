@@ -11,9 +11,13 @@ Usage:
 Safe to re-run: uses ON CONFLICT … DO UPDATE (upsert).
 """
 import argparse
+import os
 import sys
 import time
 import logging
+
+# Add project root to path so we can import config / db_manager
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import yfinance as yf
 

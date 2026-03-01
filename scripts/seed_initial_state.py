@@ -7,12 +7,16 @@ Usage:
   python seed_initial_state.py --skip-ib  # use hardcoded values (no IB needed)
 """
 
+import os
 import sys
 import time
 import logging
 import argparse
 from queue import Queue, Empty
 from datetime import datetime
+
+# Add project root to path so we can import config / db_manager
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import yfinance as yf
 

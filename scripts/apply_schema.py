@@ -8,7 +8,7 @@ if not DB_URL:
     print('DATABASE_URL not set', file=sys.stderr)
     sys.exit(2)
 
-path = os.path.join(os.path.dirname(__file__), 'schema_algotrading.sql')
+path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'sql', 'schema_v1.sql')
 with open(path, 'r', encoding='utf-8') as f:
     content = f.read()
 
