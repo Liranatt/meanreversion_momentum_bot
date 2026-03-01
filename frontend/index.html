@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlgoTrading Dashboard — Liran Attar</title>
+
+  <!-- Tailwind CSS (same stack as liranattar.dev) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen font-sans">
+
+  <!-- ── Navigation ─────────────────────────────────────── -->
+  <nav class="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+    <a href="/" class="text-lg font-bold tracking-tight text-white hover:text-blue-400 transition">
+      ← liranattar.dev
+    </a>
+    <h1 class="text-xl font-semibold">AlgoTrading Dashboard</h1>
+    <span id="last-updated" class="text-xs text-gray-500"></span>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+
+    <!-- ── Summary Cards ──────────────────────────────────── -->
+    <section id="summary-cards" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="card">
+        <p class="card-label">Portfolio Value</p>
+        <p id="card-equity" class="card-value">—</p>
+      </div>
+      <div class="card">
+        <p class="card-label">Available Cash</p>
+        <p id="card-cash" class="card-value">—</p>
+      </div>
+      <div class="card">
+        <p class="card-label">Sharpe Ratio</p>
+        <p id="card-sharpe" class="card-value">—</p>
+      </div>
+      <div class="card">
+        <p class="card-label">Max Drawdown</p>
+        <p id="card-drawdown" class="card-value">—</p>
+      </div>
+    </section>
+
+    <!-- ── Equity Curve Chart ─────────────────────────────── -->
+    <section class="bg-gray-900 rounded-2xl p-6 border border-gray-800">
+      <h2 class="text-lg font-semibold mb-4">Equity Curve</h2>
+      <canvas id="equityChart" height="120"></canvas>
+    </section>
+
+    <!-- ── Recent Trades Table ────────────────────────────── -->
+    <section class="bg-gray-900 rounded-2xl p-6 border border-gray-800 overflow-x-auto">
+      <h2 class="text-lg font-semibold mb-4">Recent Trades</h2>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-gray-400 border-b border-gray-700">
+            <th class="pb-2">Date</th>
+            <th class="pb-2">Symbol</th>
+            <th class="pb-2">Action</th>
+            <th class="pb-2">Qty</th>
+            <th class="pb-2">Price</th>
+            <th class="pb-2">P&amp;L</th>
+            <th class="pb-2">Strategy</th>
+          </tr>
+        </thead>
+        <tbody id="trades-body">
+          <tr><td colspan="7" class="py-4 text-center text-gray-500">Loading …</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── Extra Metrics ──────────────────────────────────── -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="card">
+        <p class="card-label">Total Return</p>
+        <p id="card-return" class="card-value">—</p>
+      </div>
+      <div class="card">
+        <p class="card-label">Win Rate</p>
+        <p id="card-winrate" class="card-value">—</p>
+      </div>
+      <div class="card">
+        <p class="card-label">Total Trades</p>
+        <p id="card-trades" class="card-value">—</p>
+      </div>
+      <div class="card">
+        <p class="card-label">Strategy</p>
+        <p id="card-strategy" class="card-value text-sm">—</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="text-center text-xs text-gray-600 py-6">
+    Mean-Reversion / Momentum Bot &mdash; Data updates daily after US market close.
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

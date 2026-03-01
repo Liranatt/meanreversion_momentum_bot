@@ -2,6 +2,12 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
 import talib as ta
+import logging
+
+import config
+import db_manager
+
+logger = logging.getLogger(__name__)
 
 
 class mean_momentum_strategy():
@@ -15,13 +21,12 @@ class mean_momentum_strategy():
         self.ATR = {}
         self.RSI = {}
         self.nasdaq100 = None
-        self.tickers = [
-            "MSFT", "AAPL", "NVDA", "AMZN", "GOOGL", "GOOG", "META", "AVGO",
-            "TSLA", "COST", "AMD", "PEP", "ADBE", "NFLX", "QCOM", "LIN",
-            "INTC", "AMAT", "CMCSA", "INTU", "TXN", "AMGN", "CSCO", "LRCX",
-            "HON", "BKNG", "ADP", "SBUX", "ISRG", "VRTX"
-        ]
-    def historical_data(self):
+        self.tickers = config.TICKERS  # single source of truth
+    def historical_data(self, persist: bool = True):
+        """Download 1 year of daily OHLCV from Yahoo Finance.
+        If *persist* is True (default in production) each ticker's
+        DataFrame is also saved to the algo_trading.market_data table.
+        """
         end_date = datetime.now()
         start_date = end_date - timedelta(days=365)
 
@@ -34,11 +39,29 @@ class mean_momentum_strategy():
                 if not ticker_df.empty:
                     self.tickers_data[ticker] = ticker_df
                     self.calculate_indicators(ticker, ticker_df)
+                    # Persist to Postgres
+                    if persist and config.DATABASE_URL:
+                        try:
+                            db_manager.save_market_data(ticker, ticker_df)
+                        except Exception:
+                            logger.warning("DB persist failed for %s — continuing", ticker)
             else:
-                print(f"Could not download data for {ticker}. Skipping.")
+                logger.warning("Could not download data for %s. Skipping.", ticker)
 
         self.nasdaq100 = all_data.xs('^NDX', level=1, axis=1).dropna()
-        print("Setup complete.")
+        logger.info("Historical data setup complete — %d tickers loaded.", len(self.tickers_data))
+
+    # ── helpers for the daily-batch flow ─────────────────────
+
+    def get_latest_prices(self) -> dict:
+        """Return {ticker: last_close_price} from the downloaded data.
+        Replaces the old live-tick market_data dict.
+        """
+        prices = {}
+        for ticker, df in self.tickers_data.items():
+            if not df.empty:
+                prices[ticker] = float(df['Close'].iloc[-1])
+        return prices
 
     def calculate_indicators(self, ticker: str, data: pd.DataFrame):
         self.SMA[ticker] = data['Close'].rolling(window=30).mean()

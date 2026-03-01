@@ -1,0 +1,14 @@
+# ── Core bot ──────────────────────────────
+pandas
+numpy
+yfinance
+TA-Lib
+ibapi
+matplotlib
+psycopg2-binary
+
+# ── FastAPI backend ───────────────────────
+fastapi
+uvicorn[standard]
+gunicorn
+asyncpg

@@ -1,0 +1,76 @@
+name: Daily Trading Bot
+
+on:
+  schedule:
+    # Run Mon–Fri at 21:30 UTC (after US market close, 4:30 PM ET)
+    - cron: "30 21 * * 1-5"
+  workflow_dispatch:   # manual trigger
+
+env:
+  DATABASE_URL: ${{ secrets.DATABASE_URL }}
+  IB_ACCOUNT_ID: ${{ secrets.IB_ACCOUNT_ID }}
+
+jobs:
+  trade:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      ib-gateway:
+        image: ghcr.io/gnzsnz/ib-gateway:latest
+        ports:
+          - 4002:4002
+        env:
+          TWS_USERID: ${{ secrets.IB_USER }}
+          TWS_PASSWORD: ${{ secrets.IB_PASSWORD }}
+          TRADING_MODE: paper
+          TWS_ACCEPT_INCOMING: "accept"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install TA-Lib C library
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget build-essential
+          wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz
+          tar -xzf ta-lib-0.4.0-src.tar.gz
+          cd ta-lib
+          ./configure --prefix=/usr
+          make
+          sudo make install
+          cd ..
+          rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Wait for IB Gateway to be ready
+        run: |
+          echo "Waiting for IB Gateway on port 4002..."
+          for i in $(seq 1 30); do
+            if nc -z localhost 4002 2>/dev/null; then
+              echo "IB Gateway is ready!"
+              exit 0
+            fi
+            echo "  attempt $i/30 — not ready yet"
+            sleep 5
+          done
+          echo "IB Gateway did not start in time."
+          exit 1
+
+      - name: Run daily trading bot
+        env:
+          IB_HOST: "127.0.0.1"
+          IB_PORT: "4002"
+          IB_CLIENT_ID: "1"
+        run: python main.py
+
+      - name: Database maintenance (prune old market data)
+        run: python db_maintenance.py
