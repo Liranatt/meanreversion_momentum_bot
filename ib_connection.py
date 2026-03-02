@@ -235,7 +235,16 @@ class IBConnection(EWrapper, EClient):
         self.cancelPositions()
         self._positions_done.set()
 
-    def wait_for_reconciliation(self, timeout: float = 15):
-        """Block until both account summary and positions have been received."""
-        self._account_done.wait(timeout)
-        self._positions_done.wait(timeout)
+    def wait_for_reconciliation(self, timeout: float = 15) -> bool:
+        """Block until both account summary and positions have been received.
+
+        Returns True if BOTH events fired within *timeout* seconds,
+        False if at least one timed out.
+        """
+        acct_ok = self._account_done.wait(timeout)
+        pos_ok = self._positions_done.wait(timeout)
+        if not acct_ok:
+            logger.warning("Account summary did NOT arrive within %ss", timeout)
+        if not pos_ok:
+            logger.warning("Position data did NOT arrive within %ss", timeout)
+        return acct_ok and pos_ok

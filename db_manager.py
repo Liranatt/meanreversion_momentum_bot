@@ -355,27 +355,42 @@ def save_account_snapshot(
     total_realized_pnl: float,
     num_positions: int,
 ):
-    """Insert a daily account summary snapshot."""
+    """Upsert a daily account summary snapshot (one row per calendar day).
+
+    Uses the snapshot_date unique index so re-runs on the same day
+    update the existing row instead of creating duplicates.
+    """
+    now = datetime.utcnow()
+    snapshot_date = now.date()
     sql = """
         INSERT INTO algo_trading.account_snapshot
-            (recorded_at, net_liquidation, free_cash, total_positions_value,
-             total_unrealized_pnl, total_realized_pnl, num_positions)
-        VALUES (%s, %s, %s, %s, %s, %s, %s);
+            (recorded_at, snapshot_date, net_liquidation, free_cash,
+             total_positions_value, total_unrealized_pnl,
+             total_realized_pnl, num_positions)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (snapshot_date) DO UPDATE SET
+            recorded_at          = EXCLUDED.recorded_at,
+            net_liquidation      = EXCLUDED.net_liquidation,
+            free_cash            = EXCLUDED.free_cash,
+            total_positions_value = EXCLUDED.total_positions_value,
+            total_unrealized_pnl = EXCLUDED.total_unrealized_pnl,
+            total_realized_pnl   = EXCLUDED.total_realized_pnl,
+            num_positions        = EXCLUDED.num_positions;
     """
     conn = _get_connection()
     try:
         cur = conn.cursor()
         _set_schema(cur)
         cur.execute(sql, (
-            datetime.utcnow(),
+            now, snapshot_date,
             round(net_liquidation, 2), round(free_cash, 2),
             round(total_positions_value, 2), round(total_unrealized_pnl, 2),
             round(total_realized_pnl, 2), num_positions,
         ))
         conn.commit()
         logger.info(
-            "Saved account snapshot — NLV=%.2f cash=%.2f positions_value=%.2f",
-            net_liquidation, free_cash, total_positions_value,
+            "Saved account snapshot — NLV=%.2f cash=%.2f positions_value=%.2f (date=%s)",
+            net_liquidation, free_cash, total_positions_value, snapshot_date,
         )
     except Exception:
         conn.rollback()

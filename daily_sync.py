@@ -59,6 +59,12 @@ class DailySync:
 
     # ── 2. Connect to IB & reconcile ──────────────────────
 
+    # Retry / timeout constants for IB reconciliation
+    IB_MAX_RETRIES = 3
+    IB_WAIT_TIMEOUT = 30          # seconds per attempt
+    IB_DRAIN_LOOPS = 5            # number of drain iterations
+    IB_DRAIN_INTERVAL = 1.0       # seconds between drain loops
+
     def connect_ib(self):
         if self.skip_ib:
             logger.info("Step 2 — Skipping IB connection (--skip-ib flag)")
@@ -66,21 +72,41 @@ class DailySync:
         logger.info("Step 2 — Connecting to IB Gateway …")
         self.connection = IBConnection(self.event_queue)
         self.connection.connect_to_ib()
-        self.connection.request_account_summary()
-        self.connection.request_positions()
-        self.connection.wait_for_reconciliation(timeout=20)
-        time.sleep(2)
-        self._drain_queue()
+
+        for attempt in range(1, self.IB_MAX_RETRIES + 1):
+            logger.info("IB reconciliation attempt %d/%d (timeout=%ds) …",
+                        attempt, self.IB_MAX_RETRIES, self.IB_WAIT_TIMEOUT)
+            self.connection.request_account_summary()
+            self.connection.request_positions()
+            reconciled = self.connection.wait_for_reconciliation(
+                timeout=self.IB_WAIT_TIMEOUT
+            )
+            self._drain_queue_robust()
+
+            if self.net_liquidation != 0.0 or self.cash_balance != 0.0:
+                break  # got real data
+
+            if not reconciled:
+                logger.warning("Attempt %d: IB reconciliation timed out", attempt)
+            else:
+                logger.warning("Attempt %d: reconciled but NLV/cash are 0.0", attempt)
+
+            if attempt < self.IB_MAX_RETRIES:
+                backoff = 2 ** attempt
+                logger.info("Backing off %ds before retry …", backoff)
+                time.sleep(backoff)
 
         # ── Kill-switch: abort if IB returned no account data ──
         if self.net_liquidation == 0.0 and self.cash_balance == 0.0:
             logger.critical(
-                "IB returned $0 NLV and $0 cash — Gateway likely not "
-                "authenticated.  Aborting to protect database."
+                "IB returned $0 NLV and $0 cash after %d attempts — "
+                "Gateway likely not authenticated.  Aborting to protect database.",
+                self.IB_MAX_RETRIES,
             )
             self.connection.disconnect()
             raise RuntimeError(
-                "IB data guard: net_liquidation and cash_balance are both 0.0. "
+                "IB data guard: net_liquidation and cash_balance are both 0.0 "
+                f"after {self.IB_MAX_RETRIES} attempts. "
                 "Refusing to continue to prevent silent position wipe."
             )
 
@@ -449,30 +475,44 @@ class DailySync:
     # ── Queue draining ────────────────────────────────────
 
     def _drain_queue(self):
+        """Drain all currently available events from the queue (single pass)."""
         try:
             while True:
                 event = self.event_queue.get_nowait()
-                etype = event.get("event_type")
-                if etype == "ACCOUNT_SUMMARY":
-                    tag, val = event["tag"], event["value"]
-                    if tag == "TotalCashValue":
-                        self.cash_balance = float(val)
-                    elif tag == "NetLiquidation":
-                        self.net_liquidation = float(val)
-                elif etype == "POSITION_DATA":
-                    sym = event["symbol"]
-                    qty = event["quantity"]
-                    if qty > 0:
-                        self.ib_positions[sym] = {
-                            "quantity": int(qty),
-                            "average_cost": float(event["average_cost"]),
-                        }
-                    else:
-                        self.ib_positions.pop(sym, None)
-                elif etype == "ERROR":
-                    logger.error("IB error: %s", event)
+                self._process_event(event)
         except Empty:
             pass
+
+    def _drain_queue_robust(self):
+        """Drain events with multiple passes to catch late-arriving IB callbacks."""
+        for i in range(self.IB_DRAIN_LOOPS):
+            self._drain_queue()
+            if self.net_liquidation != 0.0 or self.cash_balance != 0.0:
+                break  # got account data, no need to keep waiting
+            if i < self.IB_DRAIN_LOOPS - 1:
+                time.sleep(self.IB_DRAIN_INTERVAL)
+
+    def _process_event(self, event: dict):
+        """Handle a single IB event."""
+        etype = event.get("event_type")
+        if etype == "ACCOUNT_SUMMARY":
+            tag, val = event["tag"], event["value"]
+            if tag == "TotalCashValue":
+                self.cash_balance = float(val)
+            elif tag == "NetLiquidation":
+                self.net_liquidation = float(val)
+        elif etype == "POSITION_DATA":
+            sym = event["symbol"]
+            qty = event["quantity"]
+            if qty > 0:
+                self.ib_positions[sym] = {
+                    "quantity": int(qty),
+                    "average_cost": float(event["average_cost"]),
+                }
+            else:
+                self.ib_positions.pop(sym, None)
+        elif etype == "ERROR":
+            logger.error("IB error: %s", event)
 
     # ── Run ────────────────────────────────────────────────
 
