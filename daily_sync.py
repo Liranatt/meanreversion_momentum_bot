@@ -9,8 +9,8 @@ Flow:
   5. Download latest market data from Yahoo → save to DB
   6. Update current prices for all positions
   7. Generate buy / sell signals → save as PENDING for tomorrow's open
-  8. Compute metrics (Sharpe, max drawdown, etc.)
-  9. Save account snapshot + portfolio state
+  8. Save account snapshot + portfolio state
+  9. Compute metrics (Sharpe, max drawdown, etc.)
  10. Disconnect
 """
 
@@ -71,6 +71,19 @@ class DailySync:
         self.connection.wait_for_reconciliation(timeout=20)
         time.sleep(2)
         self._drain_queue()
+
+        # ── Kill-switch: abort if IB returned no account data ──
+        if self.net_liquidation == 0.0 and self.cash_balance == 0.0:
+            logger.critical(
+                "IB returned $0 NLV and $0 cash — Gateway likely not "
+                "authenticated.  Aborting to protect database."
+            )
+            self.connection.disconnect()
+            raise RuntimeError(
+                "IB data guard: net_liquidation and cash_balance are both 0.0. "
+                "Refusing to continue to prevent silent position wipe."
+            )
+
         logger.info(
             "IB reconciled — cash=%.2f  NLV=%.2f  positions=%s",
             self.cash_balance, self.net_liquidation, list(self.ib_positions.keys()),
@@ -476,8 +489,8 @@ class DailySync:
         self.update_market_data()         # 5
         self.update_prices()              # 6
         self.generate_signals()           # 7
-        self.compute_metrics()            # 8
-        self.save_snapshot()              # 9
+        self.save_snapshot()              # 8
+        self.compute_metrics()            # 9
 
         if self.connection:
             self.connection.disconnect()
