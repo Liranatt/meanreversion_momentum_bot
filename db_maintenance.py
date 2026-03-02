@@ -39,10 +39,21 @@ def run_maintenance():
         conn.commit()
         logger.info("Deleted %d market_data rows older than %s.", deleted, cutoff)
 
-        # --- 2. VACUUM ANALYZE (requires autocommit) ---
+        # --- 2. Prune old scan_results (>90 days) ---
+        scan_cutoff = (datetime.utcnow() - timedelta(days=90)).date()
+        cur.execute(
+            "DELETE FROM algo_trading.scan_results WHERE scan_date < %s;",
+            (scan_cutoff,),
+        )
+        scan_deleted = cur.rowcount
+        conn.commit()
+        logger.info("Deleted %d scan_results rows older than %s.", scan_deleted, scan_cutoff)
+
+        # --- 3. VACUUM ANALYZE (requires autocommit) ---
         conn.autocommit = True
         cur.execute("VACUUM ANALYZE algo_trading.market_data;")
-        logger.info("VACUUM ANALYZE complete on algo_trading.market_data.")
+        cur.execute("VACUUM ANALYZE algo_trading.scan_results;")
+        logger.info("VACUUM ANALYZE complete on market_data + scan_results.")
 
     except Exception:
         conn.rollback()

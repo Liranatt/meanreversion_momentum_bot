@@ -135,6 +135,38 @@ class mean_momentum_strategy():
         last_sma = sma_200.iloc[-1]
         return last_close > last_sma
 
+    def compute_indicators(self, ticker: str, current_price: float) -> dict:
+        """Return a dict of all indicator values and signal classifications
+        for a single ticker.  Used by the Market Scanner feature.
+        """
+        if ticker not in self.tickers_data:
+            return {
+                "close_price": current_price,
+                "sma_30": None, "upper_bb": None, "lower_bb": None,
+                "rsi_14": None, "atr_14": None,
+                "atr_signal": "N/A", "macd_signal": "N/A", "bb_signal": "N/A",
+                "market_regime": "bull" if self.is_bullish() else "bear",
+            }
+
+        sma = self.SMA[ticker].iloc[-1] if ticker in self.SMA and not self.SMA[ticker].empty else None
+        upper = self.upper_boilinger120[ticker].iloc[-1] if ticker in self.upper_boilinger120 and not self.upper_boilinger120[ticker].empty else None
+        lower = self.lower_boilinger120[ticker].iloc[-1] if ticker in self.lower_boilinger120 and not self.lower_boilinger120[ticker].empty else None
+        rsi = float(self.RSI[ticker].iloc[-1]) if ticker in self.RSI and not self.RSI[ticker].empty else None
+        atr = float(self.ATR[ticker].iloc[-1]) if ticker in self.ATR and not self.ATR[ticker].empty else None
+
+        return {
+            "close_price": current_price,
+            "sma_30": float(sma) if sma is not None else None,
+            "upper_bb": float(upper) if upper is not None else None,
+            "lower_bb": float(lower) if lower is not None else None,
+            "rsi_14": round(rsi, 2) if rsi is not None else None,
+            "atr_14": round(atr, 4) if atr is not None else None,
+            "atr_signal": self.atr_signal(ticker),
+            "macd_signal": self.MACD_signal(ticker),
+            "bb_signal": self.boilinger_signal(current_price, ticker),
+            "market_regime": "bull" if self.is_bullish() else "bear",
+        }
+
     def get_buy_signal(self, ticker: str, current_price: int) -> bool:
         if ticker not in self.tickers_data:
             return False

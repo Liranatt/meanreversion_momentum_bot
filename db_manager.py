@@ -523,3 +523,84 @@ def expire_old_signals():
         raise
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Scan Results (v3 — Market Scanner)
+# ---------------------------------------------------------------------------
+
+def save_scan_results(entries: list):
+    """Bulk upsert scan result rows for all 100 tickers.
+    Each entry is a dict with keys matching the scan_results columns.
+    """
+    if not entries:
+        return
+
+    sql = """
+        INSERT INTO algo_trading.scan_results
+            (scan_date, symbol, close_price, sma_30, upper_bb, lower_bb,
+             rsi_14, atr_14, atr_signal, macd_signal, bb_signal,
+             market_regime, signal_result, rejection_reason, is_held)
+        VALUES %s
+        ON CONFLICT (scan_date, symbol) DO UPDATE SET
+            close_price      = EXCLUDED.close_price,
+            sma_30           = EXCLUDED.sma_30,
+            upper_bb         = EXCLUDED.upper_bb,
+            lower_bb         = EXCLUDED.lower_bb,
+            rsi_14           = EXCLUDED.rsi_14,
+            atr_14           = EXCLUDED.atr_14,
+            atr_signal       = EXCLUDED.atr_signal,
+            macd_signal      = EXCLUDED.macd_signal,
+            bb_signal        = EXCLUDED.bb_signal,
+            market_regime    = EXCLUDED.market_regime,
+            signal_result    = EXCLUDED.signal_result,
+            rejection_reason = EXCLUDED.rejection_reason,
+            is_held          = EXCLUDED.is_held;
+    """
+
+    rows = [
+        (
+            e["scan_date"], e["symbol"],
+            e.get("close_price"), e.get("sma_30"), e.get("upper_bb"), e.get("lower_bb"),
+            e.get("rsi_14"), e.get("atr_14"), e.get("atr_signal"), e.get("macd_signal"),
+            e.get("bb_signal"), e.get("market_regime"), e.get("signal_result"),
+            e.get("rejection_reason"), e.get("is_held", False),
+        )
+        for e in entries
+    ]
+
+    conn = _get_connection()
+    try:
+        cur = conn.cursor()
+        _set_schema(cur)
+        execute_values(cur, sql, rows, page_size=200)
+        conn.commit()
+        logger.info("Saved %d scan result rows", len(rows))
+    except Exception:
+        conn.rollback()
+        logger.exception("Failed to save scan results")
+        raise
+    finally:
+        conn.close()
+
+
+def get_latest_scan_results() -> list:
+    """Return the most recent scan results (all tickers for latest scan_date)."""
+    conn = _get_connection()
+    try:
+        cur = conn.cursor()
+        _set_schema(cur)
+        cur.execute("""
+            SELECT scan_date, symbol, close_price, sma_30, upper_bb, lower_bb,
+                   rsi_14, atr_14, atr_signal, macd_signal, bb_signal,
+                   market_regime, signal_result, rejection_reason, is_held
+            FROM algo_trading.scan_results
+            WHERE scan_date = (
+                SELECT MAX(scan_date) FROM algo_trading.scan_results
+            )
+            ORDER BY symbol;
+        """)
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchall()]
+    finally:
+        conn.close()

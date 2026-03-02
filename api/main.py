@@ -358,6 +358,91 @@ async def signals_history(limit: int = Query(default=100, ge=1, le=1000)):
     ]
     return JSONResponse(content={"count": len(data), "data": data})
 
+# ── Market Scanner ────────────────────────────────────
+
+@app.get("/api/v1/scanner/latest")
+async def scanner_latest():
+    """Return the most recent scan results for all ~100 tickers."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT scan_date, symbol, close_price, sma_30, upper_bb, lower_bb,
+               rsi_14, atr_14, atr_signal, macd_signal, bb_signal,
+               market_regime, signal_result, rejection_reason, is_held
+        FROM algo_trading.scan_results
+        WHERE scan_date = (
+            SELECT MAX(scan_date) FROM algo_trading.scan_results
+        )
+        ORDER BY symbol;
+        """
+    )
+    if not rows:
+        return JSONResponse(content={"count": 0, "scan_date": None, "data": []})
+
+    data = [
+        {
+            "scan_date": r["scan_date"].isoformat(),
+            "symbol": r["symbol"],
+            "close_price": float(r["close_price"]) if r["close_price"] else None,
+            "sma_30": float(r["sma_30"]) if r["sma_30"] else None,
+            "upper_bb": float(r["upper_bb"]) if r["upper_bb"] else None,
+            "lower_bb": float(r["lower_bb"]) if r["lower_bb"] else None,
+            "rsi_14": float(r["rsi_14"]) if r["rsi_14"] else None,
+            "atr_14": float(r["atr_14"]) if r["atr_14"] else None,
+            "atr_signal": r["atr_signal"],
+            "macd_signal": r["macd_signal"],
+            "bb_signal": r["bb_signal"],
+            "market_regime": r["market_regime"],
+            "signal_result": r["signal_result"],
+            "rejection_reason": r["rejection_reason"],
+            "is_held": r["is_held"],
+        }
+        for r in rows
+    ]
+    return JSONResponse(content={
+        "count": len(data),
+        "scan_date": data[0]["scan_date"] if data else None,
+        "data": data,
+    })
+
+
+@app.get("/api/v1/scanner/history")
+async def scanner_history(
+    symbol: str = Query(default="AAPL"),
+    limit: int = Query(default=30, ge=1, le=365),
+):
+    """Return scan history for a single ticker."""
+    pool = await get_pool()
+    rows = await pool.fetch(
+        """
+        SELECT scan_date, symbol, close_price, sma_30, upper_bb, lower_bb,
+               rsi_14, atr_14, atr_signal, macd_signal, bb_signal,
+               market_regime, signal_result, rejection_reason, is_held
+        FROM algo_trading.scan_results
+        WHERE symbol = $1
+        ORDER BY scan_date DESC
+        LIMIT $2;
+        """,
+        symbol.upper(),
+        limit,
+    )
+    data = [
+        {
+            "scan_date": r["scan_date"].isoformat(),
+            "symbol": r["symbol"],
+            "close_price": float(r["close_price"]) if r["close_price"] else None,
+            "sma_30": float(r["sma_30"]) if r["sma_30"] else None,
+            "rsi_14": float(r["rsi_14"]) if r["rsi_14"] else None,
+            "atr_signal": r["atr_signal"],
+            "macd_signal": r["macd_signal"],
+            "bb_signal": r["bb_signal"],
+            "signal_result": r["signal_result"],
+            "rejection_reason": r["rejection_reason"],
+            "is_held": r["is_held"],
+        }
+        for r in reversed(rows)
+    ]
+    return JSONResponse(content={"symbol": symbol.upper(), "count": len(data), "data": data})
 
 # ── Reconciliation ────────────────────────────────────────
 

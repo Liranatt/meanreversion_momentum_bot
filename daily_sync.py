@@ -197,11 +197,27 @@ class DailySync:
         positions = {p["symbol"]: p for p in db_manager.get_all_positions()}
         strategy_type = "momentum" if self.strategy.is_bullish() else "mean_reversion"
         signals_count = 0
+        scan_rows = []  # collect scan results for ALL tickers
+        today = datetime.utcnow().date()
 
         for ticker in self.strategy.tickers:
             current_price = prices.get(ticker)
             if current_price is None:
+                # No data for this ticker
+                scan_rows.append({
+                    "scan_date": today, "symbol": ticker,
+                    "close_price": None, "sma_30": None, "upper_bb": None,
+                    "lower_bb": None, "rsi_14": None, "atr_14": None,
+                    "atr_signal": None, "macd_signal": None, "bb_signal": None,
+                    "market_regime": strategy_type.replace("_", " "),
+                    "signal_result": "NO_DATA", "rejection_reason": "No price data available",
+                    "is_held": ticker in positions,
+                })
                 continue
+
+            # Compute all indicators for scanner
+            ind = self.strategy.compute_indicators(ticker, current_price)
+            is_held = ticker in positions
 
             if ticker not in positions:
                 # ── BUY signal logic ──
@@ -231,6 +247,42 @@ class DailySync:
                         )
                         signals_count += 1
                         logger.info("BUY signal: %s qty=%d @ %.2f — %s", ticker, quantity, current_price, reason)
+
+                        scan_rows.append({
+                            "scan_date": today, "symbol": ticker,
+                            **ind, "signal_result": "BUY",
+                            "rejection_reason": None, "is_held": False,
+                        })
+                    else:
+                        scan_rows.append({
+                            "scan_date": today, "symbol": ticker,
+                            **ind, "signal_result": "HOLD",
+                            "rejection_reason": "Insufficient cash for minimum order",
+                            "is_held": False,
+                        })
+                else:
+                    # Build rejection reason
+                    bullish = self.strategy.is_bullish()
+                    reasons = []
+                    if bullish:
+                        if ind["atr_signal"] != "high":
+                            reasons.append(f"ATR={ind['atr_signal']} (need high)")
+                        if ind["macd_signal"] not in ("strong", "Medium"):
+                            reasons.append(f"MACD={ind['macd_signal']} (need strong/Medium)")
+                    else:
+                        if ind["bb_signal"] != "low below":
+                            reasons.append(f"BB={ind['bb_signal']} (need low below)")
+                        if ind["rsi_14"] is not None and ind["rsi_14"] >= 40:
+                            reasons.append(f"RSI={ind['rsi_14']:.1f} (need <40)")
+
+                    regime = "Bull" if bullish else "Bear"
+                    rej = f"{regime} market: " + " | ".join(reasons) if reasons else f"{regime} market: No conditions met"
+
+                    scan_rows.append({
+                        "scan_date": today, "symbol": ticker,
+                        **ind, "signal_result": "HOLD",
+                        "rejection_reason": rej, "is_held": False,
+                    })
             else:
                 # ── SELL signal logic ──
                 pos = positions[ticker]
@@ -243,9 +295,26 @@ class DailySync:
                 days_held = (datetime.utcnow() - entry).days if hasattr(entry, 'days') or hasattr(entry, 'date') else 0
 
                 if self.strategy.get_sell_signal(ticker, current_price, pos_data, days_held):
+                    # Determine sell trigger for better reason
+                    sell_triggers = []
+                    if current_price <= pos_data["stop_loss_price"]:
+                        sell_triggers.append("Stop-loss hit")
+                    if self.strategy.is_bullish():
+                        ms = self.strategy.MACD_signal(ticker)
+                        rsi_val = self.strategy.RSI[ticker].iloc[-1] if ticker in self.strategy.RSI else 50
+                        if ms == "weak" and rsi_val <= 70:
+                            sell_triggers.append("Momentum fading")
+                    else:
+                        if ticker in self.strategy.SMA and not self.strategy.SMA[ticker].empty:
+                            if current_price >= self.strategy.SMA[ticker].iloc[-1]:
+                                sell_triggers.append("Mean-reversion target hit")
+                        if days_held >= 20:
+                            sell_triggers.append("Time stop (≥20 days)")
+
+                    trigger_str = ", ".join(sell_triggers) if sell_triggers else "Sell conditions met"
                     reason = (
-                        f"Price={current_price:.2f} AvgCost={float(pos['avg_cost']):.2f} "
-                        f"DaysHeld={days_held}"
+                        f"{trigger_str} | Price={current_price:.2f} "
+                        f"AvgCost={float(pos['avg_cost']):.2f} DaysHeld={days_held}"
                     )
                     db_manager.save_pending_signal(
                         symbol=ticker,
@@ -257,6 +326,27 @@ class DailySync:
                     )
                     signals_count += 1
                     logger.info("SELL signal: %s qty=%d @ %.2f", ticker, pos["quantity"], current_price)
+
+                    scan_rows.append({
+                        "scan_date": today, "symbol": ticker,
+                        **ind, "signal_result": "SELL",
+                        "rejection_reason": None, "is_held": True,
+                    })
+                else:
+                    scan_rows.append({
+                        "scan_date": today, "symbol": ticker,
+                        **ind, "signal_result": "HOLD",
+                        "rejection_reason": "Held — no sell trigger",
+                        "is_held": True,
+                    })
+
+        # Persist scan results for ALL tickers
+        if scan_rows:
+            try:
+                db_manager.save_scan_results(scan_rows)
+                logger.info("Saved %d scan result rows", len(scan_rows))
+            except Exception:
+                logger.exception("Failed to save scan results (non-fatal)")
 
         logger.info("Generated %d signals for tomorrow's open", signals_count)
 
