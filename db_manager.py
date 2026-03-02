@@ -540,6 +540,28 @@ def expire_old_signals():
         conn.close()
 
 
+def mark_signal_expired_with_reason(signal_id: int, reason: str):
+    """Mark a specific signal as EXPIRED with a reason (e.g. price drift)."""
+    conn = _get_connection()
+    try:
+        cur = conn.cursor()
+        _set_schema(cur)
+        cur.execute("""
+            UPDATE algo_trading.pending_signals
+            SET status = 'EXPIRED',
+                reason = reason || ' | SKIPPED: ' || %s
+            WHERE id = %s;
+        """, (reason, signal_id))
+        conn.commit()
+        logger.info("Signal %d marked EXPIRED: %s", signal_id, reason[:80])
+    except Exception:
+        conn.rollback()
+        logger.exception("Failed to expire signal %d", signal_id)
+        raise
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # Scan Results (v3 — Market Scanner)
 # ---------------------------------------------------------------------------
@@ -595,6 +617,30 @@ def save_scan_results(entries: list):
         conn.rollback()
         logger.exception("Failed to save scan results")
         raise
+    finally:
+        conn.close()
+
+
+def get_latest_account_snapshot() -> dict | None:
+    """Return the most recent non-zero account snapshot, or None."""
+    conn = _get_connection()
+    try:
+        cur = conn.cursor()
+        _set_schema(cur)
+        cur.execute("""
+            SELECT recorded_at, snapshot_date, net_liquidation, free_cash,
+                   total_positions_value, total_unrealized_pnl,
+                   total_realized_pnl, num_positions
+            FROM algo_trading.account_snapshot
+            WHERE net_liquidation > 0
+            ORDER BY recorded_at DESC
+            LIMIT 1;
+        """)
+        row = cur.fetchone()
+        if row is None:
+            return None
+        cols = [d[0] for d in cur.description]
+        return dict(zip(cols, row))
     finally:
         conn.close()
 
