@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS algo_trading.positions (
     quantity        INTEGER      NOT NULL,
     avg_cost        NUMERIC(12,4) NOT NULL,
     current_price   NUMERIC(12,4),
+    highest_price   NUMERIC(12,4),
     market_value    NUMERIC(14,2),
     unrealized_pnl  NUMERIC(14,2),
     realized_pnl    NUMERIC(14,2) DEFAULT 0,

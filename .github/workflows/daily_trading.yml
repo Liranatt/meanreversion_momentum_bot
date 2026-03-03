@@ -72,6 +72,8 @@ jobs:
           echo "Waiting for IB Gateway on port 4002..."
           for i in $(seq 1 30); do
             if nc -z localhost 4002 2>/dev/null; then
+              echo "IB Gateway port is open — waiting 15s for auth handshake..."
+              sleep 15
               echo "IB Gateway is ready!"
               exit 0
             fi
@@ -80,6 +82,12 @@ jobs:
           done
           echo "IB Gateway did not start in time."
           exit 1
+
+      - name: Verify IB Gateway connection
+        env:
+          IB_HOST: "127.0.0.1"
+          IB_PORT: "4002"
+        run: python scripts/check_ib_connection.py --host 127.0.0.1 --port 4002 --timeout 20
 
       - name: Run daily sync (reconcile + signals)
         env:
@@ -127,6 +135,8 @@ jobs:
           echo "Waiting for IB Gateway on port 4002..."
           for i in $(seq 1 30); do
             if nc -z localhost 4002 2>/dev/null; then
+              echo "IB Gateway port is open — waiting 15s for auth handshake..."
+              sleep 15
               echo "IB Gateway is ready!"
               exit 0
             fi
@@ -135,6 +145,12 @@ jobs:
           done
           echo "IB Gateway did not start in time."
           exit 1
+
+      - name: Verify IB Gateway connection
+        env:
+          IB_HOST: "127.0.0.1"
+          IB_PORT: "4002"
+        run: python scripts/check_ib_connection.py --host 127.0.0.1 --port 4002 --timeout 20
 
       - name: Execute pending signals
         env:

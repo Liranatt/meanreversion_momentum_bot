@@ -17,7 +17,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")
 TICKERS = [
     # ── NASDAQ-100 constituents (as of early 2026) ──────────
     "AAPL",  "ABNB",  "ADBE",  "ADI",   "ADP",   "ADSK",  "AEP",   "AMAT",
-    "AMD",   "AMGN",  "AMZN",  "ANSS",  "ARM",   "ASML",  "AVGO",  "AZN",
+    "AMD",   "AMGN",  "AMZN",  "ARM",   "ASML",  "AVGO",  "AZN",
     "BIIB",  "BKNG",  "BKR",   "CCEP",  "CDNS",  "CDW",   "CEG",   "CHTR",
     "CMCSA", "COST",  "CPRT",  "CRWD",  "CSCO",  "CSGP",  "CSX",   "CTAS",
     "CTSH",  "DASH",  "DDOG",  "DLTR",  "DXCM",  "EA",    "EXC",   "FANG",
@@ -28,7 +28,7 @@ TICKERS = [
     "NXPI",  "ODFL",  "ON",    "ORLY",  "PANW",  "PAYX",  "PCAR",  "PDD",
     "PEP",   "PYPL",  "QCOM",  "REGN",  "ROP",   "ROST",  "SBUX",  "SMCI",
     "SNPS",  "TEAM",  "TMUS",  "TSLA",  "TTD",   "TTWO",  "TXN",   "VRSK",
-    "VRTX",  "WBA",   "WBD",   "WDAY",  "XEL",   "ZS",
+    "VRTX",  "WBD",   "WDAY",  "XEL",   "ZS",
 ]
 
 POSITION_SIZE_PCT  = 0.10      # invest 10 % of cash per signal

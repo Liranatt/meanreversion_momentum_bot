@@ -39,6 +39,7 @@ class IBConnection(EWrapper, EClient):
         self.active_orders: dict = {}
 
         # Synchronisation events
+        self._connected = threading.Event()
         self._positions_done = threading.Event()
         self._account_done = threading.Event()
 
@@ -48,22 +49,26 @@ class IBConnection(EWrapper, EClient):
         logger.info("IB connection acknowledged.")
 
     def connect_to_ib(self):
-        """Connect, start the reader thread, and wait briefly for the
+        """Connect, start the reader thread, and wait for the
         nextValidId callback before returning."""
         logger.info(
-            "Connecting to IB Gateway at %s:%s (client %s) …",
+            "Connecting to IB Gateway at %s:%s (client %s) \u2026",
             config.IB_HOST, config.IB_PORT, config.IB_CLIENT_ID,
         )
+        self._connected.clear()
         self.connect(config.IB_HOST, config.IB_PORT, clientId=config.IB_CLIENT_ID)
         thread = threading.Thread(target=self.run, daemon=True)
         thread.start()
-        threading.Event().wait(2)  # allow handshake
+        if not self._connected.wait(timeout=15):
+            logger.error("IB Gateway did not complete handshake within 15 s")
+            raise ConnectionError("IB Gateway handshake timeout — nextValidId never received")
 
     def nextValidId(self, orderId: int):
         super().nextValidId(orderId)
         self.next_order_id = orderId
         self.next_reqId = orderId
-        logger.info("Next valid order ID: %d", orderId)
+        self._connected.set()
+        logger.info("Next valid order ID: %d — connection ready", orderId)
 
     def error(self, reqId, errorCode, errorString, advancedOrderRejectJson=""):
         super().error(reqId, errorCode, errorString)

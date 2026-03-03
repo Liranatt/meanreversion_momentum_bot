@@ -410,8 +410,9 @@ class DailySync:
             else:
                 # ── SELL signal logic (for held positions) ──
                 pos = positions[ticker]
+                hp = float(pos.get("highest_price") or pos["avg_cost"])
                 pos_data = {
-                    "stop_loss_price": float(pos["avg_cost"]) * (1 - config.STOP_LOSS_PCT),
+                    "stop_loss_price": hp * (1 - config.STOP_LOSS_PCT),
                     "average_cost": float(pos["avg_cost"]),
                     "quantity": pos["quantity"],
                 }

@@ -192,10 +192,10 @@ def save_metrics(
         _set_schema(cur)
         cur.execute(sql, (
             datetime.utcnow(),
-            round(float(sharpe_ratio, 4)),
-            round(float(max_drawdown, 4)),
-            round(float(total_return, 4)),
-            round(float(win_rate, 2)),
+            round(float(sharpe_ratio), 4),
+            round(float(max_drawdown), 4),
+            round(float(total_return), 4),
+            round(float(win_rate), 2),
         ))
         conn.commit()
         logger.info(
@@ -222,19 +222,22 @@ def upsert_position(
     strategy_type: str = "",
     entry_date: Optional[datetime] = None,
     realized_pnl: float = 0.0,
+    highest_price: Optional[float] = None,
 ):
     """Insert or update a position row. Computes market_value & unrealized P&L."""
     market_value = quantity * current_price
     unrealized_pnl = (current_price - avg_cost) * quantity
+    hp = highest_price if highest_price is not None else current_price
     sql = """
         INSERT INTO algo_trading.positions
-            (symbol, quantity, avg_cost, current_price, market_value,
+            (symbol, quantity, avg_cost, current_price, highest_price, market_value,
              unrealized_pnl, realized_pnl, strategy_type, entry_date, last_updated)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (symbol) DO UPDATE SET
             quantity        = EXCLUDED.quantity,
             avg_cost        = EXCLUDED.avg_cost,
             current_price   = EXCLUDED.current_price,
+            highest_price   = GREATEST(algo_trading.positions.highest_price, EXCLUDED.highest_price),
             market_value    = EXCLUDED.market_value,
             unrealized_pnl  = EXCLUDED.unrealized_pnl,
             realized_pnl    = algo_trading.positions.realized_pnl + EXCLUDED.realized_pnl,
@@ -248,12 +251,13 @@ def upsert_position(
         _set_schema(cur)
         cur.execute(sql, (
             symbol, quantity, round(avg_cost, 4), round(current_price, 4),
+            round(hp, 4),
             round(market_value, 2), round(unrealized_pnl, 2),
             round(realized_pnl, 2), strategy_type,
             entry_date or datetime.utcnow(), datetime.utcnow(),
         ))
         conn.commit()
-        logger.info("Upserted position: %s qty=%d avg=%.4f cur=%.4f", symbol, quantity, avg_cost, current_price)
+        logger.info("Upserted position: %s qty=%d avg=%.4f cur=%.4f high=%.4f", symbol, quantity, avg_cost, current_price, hp)
     except Exception:
         conn.rollback()
         logger.exception("Failed to upsert position for %s", symbol)
@@ -280,7 +284,7 @@ def remove_position(symbol: str):
 
 
 def update_current_prices(price_map: dict):
-    """Bulk-update current_price, market_value, unrealized_pnl for all positions."""
+    """Bulk-update current_price, highest_price, market_value, unrealized_pnl for all positions."""
     conn = _get_connection()
     try:
         cur = conn.cursor()
@@ -289,12 +293,13 @@ def update_current_prices(price_map: dict):
             cur.execute("""
                 UPDATE algo_trading.positions
                 SET current_price  = %s,
+                    highest_price  = GREATEST(COALESCE(highest_price, 0), %s),
                     market_value   = quantity * %s,
                     unrealized_pnl = ((%s) - avg_cost) * quantity,
                     last_updated   = %s
                 WHERE symbol = %s;
             """, (round(price, 4), round(price, 4), round(price, 4),
-                  datetime.utcnow(), symbol))
+                  round(price, 4), datetime.utcnow(), symbol))
         conn.commit()
         logger.info("Updated current prices for %d symbols", len(price_map))
     except Exception:
@@ -312,7 +317,7 @@ def get_all_positions() -> list:
         cur = conn.cursor()
         _set_schema(cur)
         cur.execute("""
-            SELECT symbol, quantity, avg_cost, current_price, market_value,
+            SELECT symbol, quantity, avg_cost, current_price, highest_price, market_value,
                    unrealized_pnl, realized_pnl, strategy_type, entry_date, last_updated
             FROM algo_trading.positions ORDER BY symbol;
         """)
