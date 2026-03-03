@@ -6,7 +6,13 @@ import logging
 
 import config
 import db_manager
+import math
 
+def safe_float(val):
+    if val is None: return None
+    v = float(val)
+    return None if math.isnan(v) else v
+    
 logger = logging.getLogger(__name__)
 
 
@@ -213,3 +219,4 @@ class mean_momentum_strategy():
                 print(f"SELL SIGNAL (Time Stop) for {ticker}")
                 return True
         return False
+
