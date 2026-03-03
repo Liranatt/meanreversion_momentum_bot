@@ -10,6 +10,7 @@ Usage:
 """
 
 import sys
+import time
 import argparse
 from ib_insync import IB
 
@@ -20,18 +21,31 @@ def main():
     parser.add_argument("--port", type=int, default=4002)
     parser.add_argument("--client-id", type=int, default=99)
     parser.add_argument("--timeout", type=int, default=15)
+    parser.add_argument("--retries", type=int, default=5)
     parser.add_argument("--require-account", type=str, default=None)
     args = parser.parse_args()
 
     ib = IB()
-    try:
-        ib.connect(args.host, args.port, clientId=args.client_id, timeout=args.timeout)
-    except Exception as e:
-        print(f"FAIL — Could not connect to IB Gateway at {args.host}:{args.port}: {e}")
+    last_error = None
+
+    for attempt in range(1, args.retries + 1):
+        try:
+            print(f"Connection attempt {attempt}/{args.retries} …")
+            ib.connect(args.host, args.port, clientId=args.client_id, timeout=args.timeout)
+            break
+        except Exception as e:
+            last_error = e
+            print(f"  Attempt {attempt} failed: {e}")
+            if attempt < args.retries:
+                backoff = min(10, 2 ** attempt)
+                print(f"  Retrying in {backoff}s …")
+                time.sleep(backoff)
+    else:
+        print(f"FAIL — Could not connect to IB Gateway at {args.host}:{args.port} "
+              f"after {args.retries} attempts: {last_error}")
         sys.exit(1)
 
     try:
-        # Account summary
         summary = ib.accountSummary()
         nlv = cash = 0.0
         for item in summary:
@@ -48,7 +62,6 @@ def main():
                 print(f"FAIL — Required account {args.require_account} not found (got {set(accounts)})")
                 sys.exit(1)
 
-        # Positions
         positions = ib.positions()
         if positions:
             print(f"Positions ({len(positions)}):")
