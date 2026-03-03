@@ -29,32 +29,82 @@ class mean_momentum_strategy():
         self.nasdaq100 = None
         self.tickers = config.TICKERS  # single source of truth
     def historical_data(self, persist: bool = True):
-        """Download 1 year of daily OHLCV from Yahoo Finance.
-        If *persist* is True (default in production) each ticker's
-        DataFrame is also saved to the algo_trading.market_data table.
+        """Download historical data with incremental DB-aware updates.
+
+        Logic:
+        - If `persist` and `DATABASE_URL` are set and DB has >1 row for ticker,
+          load DB rows and fetch only recent data (7d) from yfinance, then merge.
+        - Otherwise perform the full 1-year fetch.
+        - Persist merged result when `persist` is True.
         """
         end_date = datetime.now()
         start_date = end_date - timedelta(days=365)
 
-        tickers_to_download = self.tickers + ['^NDX']
-        all_data = yf.download(tickers_to_download, start=start_date, end=end_date)
+        # Download NASDAQ index full-year for market regime
+        try:
+            self.nasdaq100 = yf.download('^NDX', start=start_date, end=end_date)
+        except Exception:
+            logger.warning("Failed to download ^NDX; nasdaq100 will be empty")
+            self.nasdaq100 = pd.DataFrame()
 
         for ticker in self.tickers:
-            if ('Close', ticker) in all_data.columns:
-                ticker_df = all_data.xs(ticker, level=1, axis=1).dropna()
+            try:
+                use_db = persist and config.DATABASE_URL
+                count = 0
+                if use_db:
+                    try:
+                        count = db_manager.get_market_data_count(ticker)
+                    except Exception:
+                        logger.warning("Could not get DB count for %s; falling back to full fetch", ticker)
+                        count = 0
+
+                ticker_df = pd.DataFrame()
+
+                if count > 1:
+                    # Load existing DB data
+                    try:
+                        db_df = db_manager.load_market_data(ticker)
+                    except Exception:
+                        logger.warning("Failed to load DB data for %s; fetching full year", ticker)
+                        db_df = pd.DataFrame()
+
+                    # Fetch only recent rows from yfinance
+                    try:
+                        recent_df = yf.download(ticker, period='7d')
+                    except Exception:
+                        logger.warning("Recent fetch failed for %s; using DB data only", ticker)
+                        recent_df = pd.DataFrame()
+
+                    if not db_df.empty and not recent_df.empty:
+                        db_df.index = pd.to_datetime(db_df.index).normalize()
+                        recent_df.index = pd.to_datetime(recent_df.index).normalize()
+                        merged = pd.concat([db_df, recent_df])
+                        merged = merged[~merged.index.duplicated(keep='last')].sort_index()
+                        ticker_df = merged
+                    elif not db_df.empty:
+                        ticker_df = db_df
+                    else:
+                        ticker_df = recent_df
+                else:
+                    # First-run or DB unavailable: full-year download
+                    ticker_df = yf.download(ticker, start=start_date, end=end_date)
+
                 if not ticker_df.empty:
+                    ticker_df = ticker_df.dropna()
                     self.tickers_data[ticker] = ticker_df
                     self.calculate_indicators(ticker, ticker_df)
-                    # Persist to Postgres
+
                     if persist and config.DATABASE_URL:
                         try:
                             db_manager.save_market_data(ticker, ticker_df)
                         except Exception:
                             logger.warning("DB persist failed for %s — continuing", ticker)
-            else:
-                logger.warning("Could not download data for %s. Skipping.", ticker)
+                else:
+                    logger.warning("Could not obtain data for %s (empty)", ticker)
 
-        self.nasdaq100 = all_data.xs('^NDX', level=1, axis=1).dropna()
+            except Exception:
+                logger.exception("Failed preparing historical data for %s", ticker)
+
         logger.info("Historical data setup complete — %d tickers loaded.", len(self.tickers_data))
 
     # ── helpers for the daily-batch flow ─────────────────────

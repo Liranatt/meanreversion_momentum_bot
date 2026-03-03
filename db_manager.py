@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
+import pandas as pd
 import psycopg2
 from psycopg2.extras import execute_values
 
@@ -87,6 +88,54 @@ def save_market_data(ticker: str, df):
         conn.rollback()
         logger.exception("Failed to save market data for %s", ticker)
         raise
+    finally:
+        conn.close()
+
+
+def get_market_data_count(ticker: str) -> int:
+    """Return number of rows in algo_trading.market_data for *ticker*."""
+    conn = _get_connection()
+    try:
+        cur = conn.cursor()
+        _set_schema(cur)
+        cur.execute("SELECT COUNT(*) FROM algo_trading.market_data WHERE ticker = %s;", (ticker,))
+        row = cur.fetchone()
+        return int(row[0]) if row else 0
+    finally:
+        conn.close()
+
+
+def load_market_data(ticker: str) -> pd.DataFrame:
+    """Load market data for *ticker* from DB into a pandas DataFrame.
+
+    Returns a DataFrame with DatetimeIndex and columns:
+    Open, High, Low, Close, Adj Close, Volume
+    """
+    conn = _get_connection()
+    try:
+        cur = conn.cursor()
+        _set_schema(cur)
+        cur.execute("""
+            SELECT date, open, high, low, close, adj_close, volume
+            FROM algo_trading.market_data
+            WHERE ticker = %s
+            ORDER BY date;
+        """, (ticker,))
+        rows = cur.fetchall()
+        if not rows:
+            return pd.DataFrame()
+        cols = [d[0] for d in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.set_index('date')
+        df = df.rename(columns={
+            'open': 'Open', 'high': 'High', 'low': 'Low',
+            'close': 'Close', 'adj_close': 'Adj Close', 'volume': 'Volume'
+        })
+        for c in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
+            df[c] = df[c].astype(float)
+        df['Volume'] = df['Volume'].astype(int)
+        return df
     finally:
         conn.close()
 
