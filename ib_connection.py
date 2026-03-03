@@ -167,6 +167,9 @@ class IBConnection(EWrapper, EClient):
         self.placeOrder(sl_id, contract, sl_order)
         self.placeOrder(tp_id, contract, tp_order)
 
+        self.active_orders[parent_id] = {"symbol": symbol, "action": "BUY", "quantity": quantity}
+        self.active_orders[sl_id] = {"symbol": symbol, "action": "SELL", "quantity": quantity}
+        self.active_orders[tp_id] = {"symbol": symbol, "action": "SELL", "quantity": quantity}
         return parent_id
 
     # ── Order status callback ─────────────────────────────
