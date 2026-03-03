@@ -192,10 +192,10 @@ def save_metrics(
         _set_schema(cur)
         cur.execute(sql, (
             datetime.utcnow(),
-            round(sharpe_ratio, 4),
-            round(max_drawdown, 4),
-            round(total_return, 4),
-            round(win_rate, 2),
+            round(float(sharpe_ratio, 4)),
+            round(float(max_drawdown, 4)),
+            round(float(total_return, 4)),
+            round(float(win_rate, 2)),
         ))
         conn.commit()
         logger.info(
