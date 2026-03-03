@@ -6,7 +6,7 @@ Runs shortly after US market open (9:30 AM ET):
   2. Connect to IB Gateway
   3. Verify current market prices vs signal target prices
   4. Place orders for each signal (BUY → bracket order, SELL → market order)
-  5. Wait for fills
+  5. Wait for fills  
   6. Mark signals as EXECUTED, log trades, update positions
   7. Save post-execution account snapshot + metrics
   8. Disconnect
@@ -120,6 +120,8 @@ class SignalExecutor:
                         last_price=current_price or target_price,
                     )
                     self.order_to_signal[order_id] = signal
+                    self.order_to_signal[order_id + 1] = signal  # SL
+                    self.order_to_signal[order_id + 2] = signal  # TP
                     logger.info("Placed BUY bracket for %s — parent order %d", sym, order_id)
 
                 elif sig_type == "SELL":
