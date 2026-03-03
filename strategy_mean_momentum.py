@@ -148,8 +148,10 @@ class mean_momentum_strategy():
         if ticker not in self.tickers_data:
             return {
                 "close_price": current_price,
-                "sma_30": None, "upper_bb": None, "lower_bb": None,
-                "rsi_14": None, "atr_14": None,
+                "sma_30": safe_float(sma),
+                "upper_bb": safe_float(upper),
+                "lower_bb": safe_float(lower),
+                "rsi_14": round(safe_float(rsi), 2) if rsi is not None else None,
                 "atr_signal": "N/A", "macd_signal": "N/A", "bb_signal": "N/A",
                 "market_regime": "bull" if self.is_bullish() else "bear",
             }
@@ -219,4 +221,5 @@ class mean_momentum_strategy():
                 print(f"SELL SIGNAL (Time Stop) for {ticker}")
                 return True
         return False
+
 
