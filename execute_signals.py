@@ -21,7 +21,6 @@ import time
 import logging
 import argparse
 import numpy as np
-from queue import Queue, Empty
 from datetime import datetime
 
 import yfinance as yf
@@ -44,24 +43,20 @@ class SignalExecutor:
 
     def __init__(self, dry_run: bool = False):
         self.dry_run = dry_run
-        self.event_queue: Queue = Queue()
         self.connection: IBConnection | None = None
+        self.pending_trades: list = []    # (Trade, signal) pairs
         self.fills: list = []
-        self.order_to_signal: dict = {}   # order_id → signal dict
         self.skipped_signals: list = []   # signals skipped due to price drift
         self.cash_balance: float = 0.0
         self.net_liquidation: float = 0.0
 
     def connect_ib(self):
         logger.info("Connecting to IB Gateway …")
-        self.connection = IBConnection(self.event_queue)
+        self.connection = IBConnection()
         self.connection.connect_to_ib()
-
-        # Get current account state
-        self.connection.request_account_summary()
-        self.connection.wait_for_reconciliation(timeout=15)
-        time.sleep(2)
-        self._drain_queue()
+        summary = self.connection.get_account_summary()
+        self.cash_balance = summary["cash"]
+        self.net_liquidation = summary["nlv"]
         logger.info("Connected — cash=%.2f  NLV=%.2f", self.cash_balance, self.net_liquidation)
 
     def execute_pending(self):
@@ -114,36 +109,47 @@ class SignalExecutor:
 
             try:
                 if sig_type == "BUY":
-                    order_id = self.connection.place_bracket_order(
+                    trades = self.connection.place_bracket_order(
                         symbol=sym,
                         quantity=qty,
                         last_price=current_price or target_price,
                     )
-                    self.order_to_signal[order_id] = signal
-                    self.order_to_signal[order_id + 1] = signal  # SL
-                    self.order_to_signal[order_id + 2] = signal  # TP
-                    logger.info("Placed BUY bracket for %s — parent order %d", sym, order_id)
+                    for t in trades:
+                        self.pending_trades.append((t, signal))
+                    logger.info("Placed BUY bracket for %s", sym)
 
                 elif sig_type == "SELL":
-                    contract = self.connection.create_contract(sym)
-                    order = self.connection.create_order("SELL", qty)
-                    order_id = self.connection.place_new_order(contract, order)
-                    self.order_to_signal[order_id] = signal
-                    logger.info("Placed SELL MKT for %s — order %d", sym, order_id)
+                    contract = IBConnection.create_contract(sym)
+                    order = IBConnection.create_order("SELL", qty)
+                    trade = self.connection.place_new_order(contract, order)
+                    self.pending_trades.append((trade, signal))
+                    logger.info("Placed SELL MKT for %s", sym)
 
             except Exception:
                 logger.exception("Failed to place order for %s", sym)
 
     def wait_for_fills(self, seconds: int = 30):
-        """Wait for order fills and process them."""
+        """Wait for order fills using ib_insync event loop."""
         logger.info("Waiting %ds for fills …", seconds)
-        deadline = time.time() + seconds
-        while time.time() < deadline:
-            self._drain_queue()
-            time.sleep(1)
+        elapsed = 0
+        while elapsed < seconds:
+            self.connection.ib.sleep(1)
+            elapsed += 1
+            # Check if all trades are done
+            if all(t.isDone() for t, _ in self.pending_trades):
+                break
 
-        # Process remaining events
-        self._drain_queue()
+        # Collect fills from Trade objects
+        for trade, signal in self.pending_trades:
+            if trade.orderStatus.status == "Filled":
+                self.fills.append({
+                    "symbol": trade.contract.symbol,
+                    "action": trade.order.action,
+                    "quantity": int(trade.orderStatus.filled),
+                    "fill_price": float(trade.orderStatus.avgFillPrice),
+                    "order_id": trade.order.orderId,
+                    "signal": signal,
+                })
         logger.info("Received %d fills", len(self.fills))
 
     def process_fills(self):
@@ -156,9 +162,8 @@ class SignalExecutor:
             qty = int(fill["quantity"])
             price = float(fill["fill_price"])
             order_id = fill.get("order_id")
+            signal = fill.get("signal")
 
-            # Find matching signal
-            signal = self.order_to_signal.get(order_id)
             strategy_type = signal["strategy_type"] if signal else ""
             signal_id = signal["id"] if signal else None
 
@@ -217,12 +222,7 @@ class SignalExecutor:
 
     def mark_unfilled_expired(self):
         """Any pending signals that didn't fill get marked expired."""
-        filled_signal_ids = set()
-        for fill in self.fills:
-            order_id = fill.get("order_id")
-            signal = self.order_to_signal.get(order_id)
-            if signal:
-                filled_signal_ids.add(signal["id"])
+        filled_signal_ids = {f["signal"]["id"] for f in self.fills if f.get("signal")}
 
         # Remaining pending signals that weren't filled
         signals = db_manager.get_pending_signals()
@@ -313,23 +313,6 @@ class SignalExecutor:
             logger.warning("Could not fetch current prices for verification — proceeding without")
         return prices
 
-    def _drain_queue(self):
-        try:
-            while True:
-                event = self.event_queue.get_nowait()
-                etype = event.get("event_type")
-                if etype == "FILL":
-                    self.fills.append(event)
-                elif etype == "ACCOUNT_SUMMARY":
-                    tag, val = event["tag"], event["value"]
-                    if tag == "TotalCashValue":
-                        self.cash_balance = float(val)
-                    elif tag == "NetLiquidation":
-                        self.net_liquidation = float(val)
-                elif etype == "ERROR":
-                    logger.error("IB error: %s", event)
-        except Empty:
-            pass
 
     def run(self):
         logger.info("=" * 60)
@@ -341,17 +324,16 @@ class SignalExecutor:
 
         self.execute_pending()
 
-        if not self.dry_run and self.order_to_signal:
+        if not self.dry_run and self.pending_trades:
             self.wait_for_fills()
             self.process_fills()
             self.mark_unfilled_expired()
 
             # Post-execution: refresh account and update snapshot + metrics
             if self.fills:
-                self.connection.request_account_summary()
-                self.connection.wait_for_reconciliation(timeout=10)
-                time.sleep(2)
-                self._drain_queue()
+                summary = self.connection.get_account_summary()
+                self.cash_balance = summary["cash"]
+                self.net_liquidation = summary["nlv"]
                 self.save_post_execution_snapshot()
                 self.recompute_metrics()
 

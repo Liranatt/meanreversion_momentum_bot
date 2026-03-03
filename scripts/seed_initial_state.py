@@ -9,10 +9,8 @@ Usage:
 
 import os
 import sys
-import time
 import logging
 import argparse
-from queue import Queue, Empty
 from datetime import datetime
 
 # Add project root to path so we can import config / db_manager
@@ -34,37 +32,13 @@ def seed_from_ib():
     """Connect to IB, read account + positions, seed DB."""
     from ib_connection import IBConnection
 
-    event_queue = Queue()
-    conn = IBConnection(event_queue)
+    conn = IBConnection()
     conn.connect_to_ib()
-    conn.request_account_summary()
-    conn.request_positions()
-    conn.wait_for_reconciliation(timeout=20)
-    time.sleep(2)
 
-    cash = 0.0
-    nlv = 0.0
-    positions = {}
-
-    try:
-        while True:
-            event = event_queue.get_nowait()
-            etype = event.get("event_type")
-            if etype == "ACCOUNT_SUMMARY":
-                if event["tag"] == "TotalCashValue":
-                    cash = float(event["value"])
-                elif event["tag"] == "NetLiquidation":
-                    nlv = float(event["value"])
-            elif etype == "POSITION_DATA":
-                sym = event["symbol"]
-                qty = event["quantity"]
-                if qty > 0:
-                    positions[sym] = {
-                        "quantity": int(qty),
-                        "average_cost": float(event["average_cost"]),
-                    }
-    except Empty:
-        pass
+    summary = conn.get_account_summary()
+    cash = summary["cash"]
+    nlv = summary["nlv"]
+    positions = conn.get_positions()
 
     conn.disconnect()
     return cash, nlv, positions

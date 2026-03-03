@@ -3,7 +3,7 @@ pandas
 numpy
 yfinance
 TA-Lib
-ibapi
+ib_insync
 matplotlib
 psycopg2-binary
 

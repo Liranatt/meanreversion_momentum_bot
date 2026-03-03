@@ -24,7 +24,6 @@ import time
 import logging
 import argparse
 import numpy as np
-from queue import Queue, Empty
 from datetime import datetime, timedelta
 
 import yfinance as yf
@@ -45,14 +44,7 @@ logger = logging.getLogger("daily_sync")
 class DailySync:
     """End-of-day pipeline: download data → verify with IB → generate signals."""
 
-    # Retry / timeout constants for IB verification
-    IB_MAX_RETRIES = 3
-    IB_WAIT_TIMEOUT = 30          # seconds per attempt
-    IB_DRAIN_LOOPS = 5            # number of drain iterations
-    IB_DRAIN_INTERVAL = 1.0       # seconds between drain loops
-
     def __init__(self):
-        self.event_queue: Queue = Queue()
         self.connection: IBConnection | None = None
         self.strategy = mean_momentum_strategy()
 
@@ -62,10 +54,6 @@ class DailySync:
         self.ib_positions: dict = {}   # symbol → {quantity, average_cost}
         self.ib_connected: bool = False
         self.ib_verified: bool = False  # True when IB successfully verified
-
-        # Internal IB queue values (separate from working values)
-        self._ib_cash_from_queue: float = 0.0
-        self._ib_nlv_from_queue: float = 0.0
 
     # ── 1. Expire stale signals ────────────────────────────
 
@@ -116,47 +104,29 @@ class DailySync:
     def verify_with_ib(self):
         """Connect to IB Gateway to VERIFY account data and positions.
         If IB fails to connect, we continue with DB values and log a warning.
-        IB data is NOT the primary source — it is a verification check.
         """
         logger.info("Step 4 — Connecting to IB Gateway for verification …")
         try:
-            self.connection = IBConnection(self.event_queue)
+            self.connection = IBConnection()
             self.connection.connect_to_ib()
             self.ib_connected = True
 
-            for attempt in range(1, self.IB_MAX_RETRIES + 1):
-                logger.info("IB verification attempt %d/%d (timeout=%ds) …",
-                            attempt, self.IB_MAX_RETRIES, self.IB_WAIT_TIMEOUT)
-                self.connection.request_account_summary()
-                self.connection.request_positions()
-                reconciled = self.connection.wait_for_reconciliation(
-                    timeout=self.IB_WAIT_TIMEOUT
-                )
-                self._drain_queue_robust()
+            summary = self.connection.get_account_summary()
+            ib_cash = summary["cash"]
+            ib_nlv = summary["nlv"]
+            self.ib_positions = self.connection.get_positions()
 
-                if self._ib_nlv_from_queue != 0.0 or self._ib_cash_from_queue != 0.0:
-                    self.ib_verified = True
-                    logger.info("IB verified — cash=%.2f  NLV=%.2f  positions=%s",
-                                self._ib_cash_from_queue, self._ib_nlv_from_queue,
-                                list(self.ib_positions.keys()))
-                    break
-
-                if not reconciled:
-                    logger.warning("Attempt %d: IB verification timed out", attempt)
-                else:
-                    logger.warning("Attempt %d: reconciled but NLV/cash are 0.0", attempt)
-
-                if attempt < self.IB_MAX_RETRIES:
-                    backoff = 2 ** attempt
-                    logger.info("Backing off %ds before retry …", backoff)
-                    time.sleep(backoff)
-
-            if not self.ib_verified:
+            if ib_nlv != 0.0 or ib_cash != 0.0:
+                self.ib_verified = True
+                self._ib_cash = ib_cash
+                self._ib_nlv = ib_nlv
+                logger.info("IB verified — cash=%.2f  NLV=%.2f  positions=%s",
+                            ib_cash, ib_nlv, list(self.ib_positions.keys()))
+            else:
                 logger.warning(
-                    "IB verification FAILED after %d attempts — "
-                    "continuing with DB values (cash=%.2f, NLV=%.2f). "
-                    "IB Gateway may not be authenticated.",
-                    self.IB_MAX_RETRIES, self.cash_balance, self.net_liquidation,
+                    "IB returned zero values — continuing with DB values "
+                    "(cash=%.2f, NLV=%.2f). IB Gateway may not be authenticated.",
+                    self.cash_balance, self.net_liquidation,
                 )
 
         except Exception as exc:
@@ -180,8 +150,8 @@ class DailySync:
         logger.info("Step 5 — Reconciling IB vs DB …")
 
         # ── 5a. Account values ──
-        ib_cash = self._ib_cash_from_queue
-        ib_nlv = self._ib_nlv_from_queue
+        ib_cash = self._ib_cash
+        ib_nlv = self._ib_nlv
 
         if abs(ib_cash - self.cash_balance) > 0.01 or abs(ib_nlv - self.net_liquidation) > 0.01:
             logger.warning(
@@ -572,48 +542,6 @@ class DailySync:
 
         win_rate = (winning / total_trades * 100) if total_trades > 0 else 0.0
         db_manager.save_metrics(sharpe, max_dd, total_return, win_rate)
-
-    # ── Queue draining (IB event processing) ───────────────
-
-    def _drain_queue(self):
-        """Drain all currently available events from the queue (single pass)."""
-        try:
-            while True:
-                event = self.event_queue.get_nowait()
-                self._process_event(event)
-        except Empty:
-            pass
-
-    def _drain_queue_robust(self):
-        """Drain events with multiple passes to catch late-arriving IB callbacks."""
-        for i in range(self.IB_DRAIN_LOOPS):
-            self._drain_queue()
-            if self._ib_nlv_from_queue != 0.0 or self._ib_cash_from_queue != 0.0:
-                break
-            if i < self.IB_DRAIN_LOOPS - 1:
-                time.sleep(self.IB_DRAIN_INTERVAL)
-
-    def _process_event(self, event: dict):
-        """Handle a single IB event."""
-        etype = event.get("event_type")
-        if etype == "ACCOUNT_SUMMARY":
-            tag, val = event["tag"], event["value"]
-            if tag == "TotalCashValue":
-                self._ib_cash_from_queue = float(val)
-            elif tag == "NetLiquidation":
-                self._ib_nlv_from_queue = float(val)
-        elif etype == "POSITION_DATA":
-            sym = event["symbol"]
-            qty = event["quantity"]
-            if qty > 0:
-                self.ib_positions[sym] = {
-                    "quantity": int(qty),
-                    "average_cost": float(event["average_cost"]),
-                }
-            else:
-                self.ib_positions.pop(sym, None)
-        elif etype == "ERROR":
-            logger.error("IB error: %s", event)
 
     # ── Run ────────────────────────────────────────────────
 
