@@ -9,7 +9,7 @@ Provides synchronous methods for:
 
 import logging
 from ib_insync import IB, Stock, MarketOrder, LimitOrder, StopOrder, Order
-
+import time
 import config
 
 logger = logging.getLogger(__name__)
@@ -23,11 +23,22 @@ class IBConnection:
 
     # ── Connection ─────────────────────────────────────────
 
-    def connect_to_ib(self):
+    def connect_to_ib(self, retries=3):
         logger.info("Connecting to IB at %s:%s (client %s) …",
                      config.IB_HOST, config.IB_PORT, config.IB_CLIENT_ID)
-        self.ib.connect(config.IB_HOST, config.IB_PORT, clientId=config.IB_CLIENT_ID)
-        logger.info("Connected to IB Gateway.")
+        last_error = None
+        for attempt in range(1, retries + 1):
+            try:
+                self.ib.connect(config.IB_HOST, config.IB_PORT,
+                                clientId=config.IB_CLIENT_ID, timeout=15)
+                logger.info("Connected to IB Gateway.")
+                return
+            except Exception as e:
+                last_error = e
+                logger.warning("Connection attempt %d/%d failed: %s", attempt, retries, e)
+                if attempt < retries:
+                    time.sleep(min(10, 2 ** attempt))
+        raise ConnectionError(f"Could not connect to IB after {retries} attempts: {last_error}")
 
     def disconnect(self):
         if self.ib.isConnected():
