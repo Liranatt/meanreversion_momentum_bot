@@ -210,7 +210,7 @@ async def current_positions():
     pool = await get_pool()
     rows = await pool.fetch(
         """
-        SELECT symbol, quantity, avg_cost, current_price, market_value,
+        SELECT symbol, quantity, avg_cost, current_price, highest_price, market_value,
                unrealized_pnl, realized_pnl, strategy_type, entry_date, last_updated
         FROM algo_trading.positions
         ORDER BY market_value DESC NULLS LAST;
@@ -222,6 +222,7 @@ async def current_positions():
             "quantity": r["quantity"],
             "avg_cost": float(r["avg_cost"]) if r["avg_cost"] else 0,
             "current_price": float(r["current_price"]) if r["current_price"] else 0,
+            "highest_price": float(r["highest_price"]) if r["highest_price"] else 0,
             "market_value": float(r["market_value"]) if r["market_value"] else 0,
             "unrealized_pnl": float(r["unrealized_pnl"]) if r["unrealized_pnl"] else 0,
             "realized_pnl": float(r["realized_pnl"]) if r["realized_pnl"] else 0,
