@@ -556,7 +556,7 @@ class DailySync:
             return
 
         returns = np.diff(equities) / equities[:-1]
-        sharpe = (returns.mean() / returns.std()) * np.sqrt(252) if returns.std() > 0 else 0.0
+        sharpe = float((returns.mean() / returns.std()) * np.sqrt(252)) if returns.std() > 0 else 0.0
         running_max = np.maximum.accumulate(equities)
         drawdowns = (equities - running_max) / running_max
         max_dd = float(drawdowns.min())
